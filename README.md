@@ -13,20 +13,19 @@ editing, filming, design, copywriting or feedback.
 
 ## Tech
 
-- Python + Flask (backend and routes)
-- Jinja (template language, comes with Flask)
+- Python 3, standard library only (nothing to install with pip)
+- `http.server` (the web server and routes)
+- HTML templates in `templates/` with `$placeholders` that Python fills in (`string.Template`).
+  Everything users type is escaped with `html.escape` before it goes into a page.
 - SQLite (database, one file called `board.db`)
 - Handwritten CSS, no framework
 
 ## How to start it
 
-You need Python 3.
+You need Python 3. There is nothing to install.
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python app.py
+python3 app.py
 ```
 
 Then open http://localhost:5001 in your browser.
