@@ -20,6 +20,15 @@ def get_db():
     return conn
 
 
+def run_query(sql, params=()):
+    # open the database, run one query, save and close, then return the rows
+    conn = get_db()
+    rows = conn.execute(sql, params).fetchall()
+    conn.commit()
+    conn.close()
+    return rows
+
+
 def init_db():
     # create the table and add some example requests if it is empty
     conn = get_db()
@@ -77,22 +86,29 @@ def check_form(form):
         "status": form.get("status", "Open"),
     }
     errors = []
-    if data["title"] == "":
+    if not data["title"]:
         errors.append("Please write a title.")
     if len(data["title"]) > 100:
         errors.append("The title can be at most 100 characters.")
-    if data["description"] == "":
+    if not data["description"]:
         errors.append("Please write a description.")
-    if data["display_name"] == "":
+    if not data["display_name"]:
         errors.append("Please write a display name.")
     if data["skill"] not in SKILLS:
         errors.append("Please choose a skill from the list.")
     if data["status"] not in STATUSES:
         errors.append("Please choose a status from the list.")
-    link = data["content_link"]
-    if link != "" and not (link.startswith("http://") or link.startswith("https://")):
+    if data["content_link"] and not data["content_link"].startswith(("http://", "https://")):
         errors.append("The link must start with http:// or https://")
     return data, errors
+
+
+def render_form(data, errors=None, request_id=None, status=200):
+    # show the form page; we are editing if we know which request it is
+    html = render_template("form.html", data=data, errors=errors or [],
+                           editing=request_id is not None, request_id=request_id,
+                           skills=SKILLS, statuses=STATUSES)
+    return html, status
 
 
 @app.route("/")
@@ -107,9 +123,7 @@ def about():
 
 @app.route("/requests")
 def list_requests():
-    conn = get_db()
-    rows = conn.execute("SELECT * FROM help_requests ORDER BY id DESC").fetchall()
-    conn.close()
+    rows = run_query("SELECT * FROM help_requests ORDER BY id DESC")
     return render_template("list.html", requests=rows)
 
 
@@ -117,16 +131,14 @@ def list_requests():
 def new_request():
     empty = {"title": "", "description": "", "display_name": "", "skill": "",
              "content_link": "", "status": "Open"}
-    return render_template("form.html", data=empty, errors=[], editing=False,
-                           skills=SKILLS, statuses=STATUSES)
+    return render_form(empty)
 
 
 @app.route("/requests", methods=["POST"])
 def create_request():
     data, errors = check_form(request.form)
     if errors:
-        return render_template("form.html", data=data, errors=errors, editing=False,
-                               skills=SKILLS, statuses=STATUSES), 400
+        return render_form(data, errors, status=400)
     conn = get_db()
     cursor = conn.execute(
         "INSERT INTO help_requests (title, description, display_name, skill, content_link, status) "
@@ -150,8 +162,7 @@ def show_request(request_id):
 @app.route("/requests/<int:request_id>/edit")
 def edit_request(request_id):
     row = get_request_or_404(request_id)
-    return render_template("form.html", data=row, errors=[], editing=True,
-                           request_id=request_id, skills=SKILLS, statuses=STATUSES)
+    return render_form(row, request_id=request_id)
 
 
 @app.route("/requests/<int:request_id>/edit", methods=["POST"])
@@ -159,17 +170,13 @@ def update_request(request_id):
     get_request_or_404(request_id)
     data, errors = check_form(request.form)
     if errors:
-        return render_template("form.html", data=data, errors=errors, editing=True,
-                               request_id=request_id, skills=SKILLS, statuses=STATUSES), 400
-    conn = get_db()
-    conn.execute(
+        return render_form(data, errors, request_id, status=400)
+    run_query(
         "UPDATE help_requests SET title = ?, description = ?, display_name = ?, skill = ?, "
         "content_link = ?, status = ? WHERE id = ?",
         (data["title"], data["description"], data["display_name"], data["skill"],
          data["content_link"], data["status"], request_id),
     )
-    conn.commit()
-    conn.close()
     return redirect(url_for("show_request", request_id=request_id))
 
 
@@ -183,10 +190,7 @@ def confirm_delete(request_id):
 @app.route("/requests/<int:request_id>/delete", methods=["POST"])
 def delete_request(request_id):
     get_request_or_404(request_id)
-    conn = get_db()
-    conn.execute("DELETE FROM help_requests WHERE id = ?", (request_id,))
-    conn.commit()
-    conn.close()
+    run_query("DELETE FROM help_requests WHERE id = ?", (request_id,))
     return redirect(url_for("list_requests"))
 
 
