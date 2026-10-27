@@ -1,6 +1,5 @@
 # CODE Creator Board
-# A small website where creators can ask for help (editing, filming, design...).
-# It only uses Python's standard library, so there is nothing to install.
+# A small website where students can ask for help (editing, filming, design...).
 # Data is saved in a SQLite database. Pages are HTML files in templates/
 # with $placeholders that Python fills in.
 
@@ -24,7 +23,7 @@ SKILLS = ["Editing", "Filming", "Design", "Copywriting", "Feedback", "Other"]
 STATUSES = ["Open", "In progress", "Done"]
 
 
-# ---------- database ----------
+# database !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 def get_db():
     # open a connection to the database
@@ -34,7 +33,7 @@ def get_db():
 
 
 def run_query(sql, params=()):
-    # open the database, run one query, save and close, then return the rows
+    # open the database, run one query save and close then return the rows
     conn = get_db()
     rows = conn.execute(sql, params).fetchall()
     conn.commit()
@@ -60,14 +59,14 @@ def init_db():
     if count == 0:
         examples = [
             ("Help edit a 30-second founder reel",
-             "I filmed a short reel about my startup but the cuts feel slow. "
-             "Looking for someone to tighten it. Peer exchange: I can help with copywriting in return.",
+             "I filmed a short reel and I can't get myaself to edit it! I'm cringing from myself. "
+             "Looking for someone to help me edit it. Peer exchange: I can help with copywriting in return.",
              "Mila (demo)", "Editing", "https://example.com/my-reel", "Open"),
             ("Need someone to film a product demo",
              "Thursday afternoon at the CODE campus, about 1 hour. Phone camera is fine.",
              "Jonas (demo)", "Filming", "", "In progress"),
             ("Feedback on my new logo",
-             "I made three logo ideas. Which one is the clearest? Short feedback is enough.",
+             "I made three logo ideas. Which one is the best? Short feedback is enough.",
              "Ava (demo)", "Feedback", "https://example.com/logos", "Done"),
         ]
         conn.executemany(
@@ -115,7 +114,8 @@ def check_form(form):
     return data, errors
 
 
-# ---------- making pages ----------
+# here starts making pages!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 
 def render(name, safe=None, **values):
     # fill the $placeholders in templates/<name>.
@@ -194,7 +194,7 @@ def render_form(data, errors=None, request_id=None, status=200):
                 content_link=data["content_link"] or "")
 
 
-# ---------- the pages (one function per route) ----------
+# the pages (one function per route)!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 def home():
     return redirect("/requests")
@@ -303,7 +303,7 @@ def static_file(filename):
     return 200, {"Content-Type": content_type}, body
 
 
-# ---------- routing: which function answers which URL ----------
+# routing: which function answers which URL!!!!!!!!!!!!!!!!!!!!!!!!!
 
 def handle_request(method, path, form):
     # The same URL can have a GET and a POST version.
@@ -364,7 +364,7 @@ def answer(method, path, form):
                           "Something went wrong with the database. Please try again later.", 500)
 
 
-# ---------- the web server ----------
+# the web server!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 class Handler(BaseHTTPRequestHandler):
     # http.server needs a class; it calls do_GET / do_POST for each request
