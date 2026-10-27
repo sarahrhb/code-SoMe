@@ -1,17 +1,30 @@
 # CODE Creator Board
-# A small Flask app where creators can ask for help (editing, filming, design...).
-# Data is saved in a SQLite database. Pages are made with Jinja templates.
+# A small website where creators can ask for help (editing, filming, design...).
+# It only uses Python's standard library, so there is nothing to install.
+# Data is saved in a SQLite database. Pages are HTML files in templates/
+# with $placeholders that Python fills in.
 
+import html
+import mimetypes
+import os
 import sqlite3
-from flask import Flask, render_template, request, redirect, url_for, abort
-
-app = Flask(__name__)
+import string
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import parse_qs, unquote, urlsplit
 
 DATABASE = "board.db"
+PORT = 5001
+
+# folders next to this file
+HERE = os.path.dirname(os.path.abspath(__file__))
+TEMPLATES = os.path.join(HERE, "templates")
+STATIC = os.path.join(HERE, "static")
 
 SKILLS = ["Editing", "Filming", "Design", "Copywriting", "Feedback", "Other"]
 STATUSES = ["Open", "In progress", "Done"]
 
+
+# ---------- database ----------
 
 def get_db():
     # open a connection to the database
@@ -66,13 +79,12 @@ def init_db():
     conn.close()
 
 
-def get_request_or_404(request_id):
-    conn = get_db()
-    row = conn.execute("SELECT * FROM help_requests WHERE id = ?", (request_id,)).fetchone()
-    conn.close()
-    if row is None:
-        abort(404)
-    return row
+def get_request(request_id):
+    # return one request, or None if this id does not exist
+    rows = run_query("SELECT * FROM help_requests WHERE id = ?", (request_id,))
+    if rows:
+        return rows[0]
+    return None
 
 
 def check_form(form):
@@ -103,40 +115,118 @@ def check_form(form):
     return data, errors
 
 
+# ---------- making pages ----------
+
+def render(name, safe=None, **values):
+    # fill the $placeholders in templates/<name>.
+    # Every normal value is escaped, so text people type can't become HTML.
+    # "safe" is for pieces of HTML we built ourselves (they are already escaped).
+    with open(os.path.join(TEMPLATES, name), encoding="utf-8") as file:
+        template = string.Template(file.read())
+    filled = {key: html.escape(str(value)) for key, value in values.items()}
+    filled.update(safe or {})
+    return template.substitute(filled)
+
+
+def page(page_title, name, http_status=200, safe=None, **values):
+    # put a template inside base.html and return a full response
+    content = render(name, safe, **values)
+    body = render("base.html", safe={"content": content}, page_title=page_title)
+    return http_status, {"Content-Type": "text/html; charset=utf-8"}, body.encode("utf-8")
+
+
+def redirect(url):
+    # tell the browser to go to another page
+    return 302, {"Location": url}, b""
+
+
+def error_page(title, message, status):
+    return page(title, "error.html", status, title=title, message=message)
+
+
+def not_found():
+    return error_page("Page not found",
+                      "This page or request does not exist (maybe it was deleted).", 404)
+
+
+def status_class(status):
+    # "In progress" -> "status-in-progress" (used by the CSS for colours)
+    return "status-" + status.lower().replace(" ", "-")
+
+
+def make_options(choices, chosen):
+    # <option> tags for a <select>, with the chosen one selected
+    options = []
+    for choice in choices:
+        selected = " selected" if choice == chosen else ""
+        value = html.escape(choice)
+        options.append(f'<option value="{value}"{selected}>{value}</option>')
+    return "\n".join(options)
+
+
 def render_form(data, errors=None, request_id=None, status=200):
     # show the form page; we are editing if we know which request it is
-    html = render_template("form.html", data=data, errors=errors or [],
-                           editing=request_id is not None, request_id=request_id,
-                           skills=SKILLS, statuses=STATUSES)
-    return html, status
+    editing = request_id is not None
+    errors_html = ""
+    if errors:
+        items = "\n".join(f"<li>{html.escape(error)}</li>" for error in errors)
+        errors_html = render("errors.html", safe={"items": items})
+    if editing:
+        title = "Edit request"
+        heading = f"Edit request #{request_id}"
+        action = f"/requests/{request_id}/edit"
+        button_text = "Save changes"
+        cancel_url = f"/requests/{request_id}"
+    else:
+        title = heading = "Ask for help"
+        action = "/requests"
+        button_text = "Post request"
+        cancel_url = "/requests"
+    safe = {
+        "errors": errors_html,
+        "skill_options": make_options(SKILLS, data["skill"]),
+        "status_options": make_options(STATUSES, data["status"]),
+    }
+    return page(title, "form.html", status, safe,
+                heading=heading, action=action, button_text=button_text,
+                cancel_url=cancel_url, title=data["title"],
+                description=data["description"], display_name=data["display_name"],
+                content_link=data["content_link"] or "")
 
 
-@app.route("/")
+# ---------- the pages (one function per route) ----------
+
 def home():
-    return redirect(url_for("list_requests"))
+    return redirect("/requests")
 
 
-@app.route("/about")
 def about():
-    return render_template("about.html")
+    return page("About", "about.html")
 
 
-@app.route("/requests")
 def list_requests():
     rows = run_query("SELECT * FROM help_requests ORDER BY id DESC")
-    return render_template("list.html", requests=rows)
+    if not rows:
+        empty = '<p class="empty">No requests yet. Be the first to ask for help!</p>'
+        return page("Requests", "list.html", safe={"cards": empty})
+    cards = []
+    for row in rows:
+        cards.append(render("card.html", id=row["id"], title=row["title"],
+                            skill=row["skill"], status=row["status"],
+                            status_class=status_class(row["status"]),
+                            display_name=row["display_name"]))
+    cards_html = '<ul class="cards">\n' + "\n".join(cards) + "\n</ul>"
+    return page("Requests", "list.html", safe={"cards": cards_html})
 
 
-@app.route("/requests/new")
 def new_request():
     empty = {"title": "", "description": "", "display_name": "", "skill": "",
              "content_link": "", "status": "Open"}
     return render_form(empty)
 
 
-@app.route("/requests", methods=["POST"])
-def create_request():
-    data, errors = check_form(request.form)
+def create_request(form):
+    data, errors = check_form(form)
     if errors:
         return render_form(data, errors, status=400)
     conn = get_db()
@@ -149,26 +239,34 @@ def create_request():
     conn.commit()
     new_id = cursor.lastrowid
     conn.close()
-    return redirect(url_for("show_request", request_id=new_id))
+    return redirect(f"/requests/{new_id}")
 
 
-# dynamic route: the same function shows a different request for each id
-@app.route("/requests/<int:request_id>")
 def show_request(request_id):
-    row = get_request_or_404(request_id)
-    return render_template("detail.html", req=row)
+    row = get_request(request_id)
+    if row is None:
+        return not_found()
+    link_html = ""
+    if row["content_link"]:
+        link = html.escape(row["content_link"])
+        link_html = f'<p>Content link: <a href="{link}" rel="noopener nofollow">{link}</a></p>'
+    return page(row["title"], "detail.html", safe={"link": link_html},
+                id=row["id"], title=row["title"], skill=row["skill"],
+                status=row["status"], status_class=status_class(row["status"]),
+                display_name=row["display_name"], description=row["description"])
 
 
-@app.route("/requests/<int:request_id>/edit")
 def edit_request(request_id):
-    row = get_request_or_404(request_id)
+    row = get_request(request_id)
+    if row is None:
+        return not_found()
     return render_form(row, request_id=request_id)
 
 
-@app.route("/requests/<int:request_id>/edit", methods=["POST"])
-def update_request(request_id):
-    get_request_or_404(request_id)
-    data, errors = check_form(request.form)
+def update_request(request_id, form):
+    if get_request(request_id) is None:
+        return not_found()
+    data, errors = check_form(form)
     if errors:
         return render_form(data, errors, request_id, status=400)
     run_query(
@@ -177,38 +275,133 @@ def update_request(request_id):
         (data["title"], data["description"], data["display_name"], data["skill"],
          data["content_link"], data["status"], request_id),
     )
-    return redirect(url_for("show_request", request_id=request_id))
+    return redirect(f"/requests/{request_id}")
 
 
-@app.route("/requests/<int:request_id>/delete")
 def confirm_delete(request_id):
     # only shows a question, nothing is deleted here
-    row = get_request_or_404(request_id)
-    return render_template("delete.html", req=row)
+    row = get_request(request_id)
+    if row is None:
+        return not_found()
+    return page("Delete request", "delete.html", id=row["id"], title=row["title"])
 
 
-@app.route("/requests/<int:request_id>/delete", methods=["POST"])
 def delete_request(request_id):
-    get_request_or_404(request_id)
+    if get_request(request_id) is None:
+        return not_found()
     run_query("DELETE FROM help_requests WHERE id = ?", (request_id,))
-    return redirect(url_for("list_requests"))
+    return redirect("/requests")
 
 
-@app.errorhandler(404)
-def not_found(error):
-    return render_template("error.html", title="Page not found",
-                           message="This page or request does not exist (maybe it was deleted)."), 404
+def static_file(filename):
+    # send a file from static/ (only files that are really in that folder)
+    if filename not in os.listdir(STATIC):
+        return not_found()
+    with open(os.path.join(STATIC, filename), "rb") as file:
+        body = file.read()
+    content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+    return 200, {"Content-Type": content_type}, body
 
 
-@app.errorhandler(sqlite3.Error)
-def database_error(error):
-    print("Database error:", error)
-    return render_template("error.html", title="Database problem",
-                           message="Something went wrong with the database. Please try again later."), 500
+# ---------- routing: which function answers which URL ----------
+
+def handle_request(method, path, form):
+    # The same URL can have a GET and a POST version.
+    # For /requests/<id>/... we read the id from the URL (a "dynamic route").
+    parts = path.split("/")  # "/requests/5/edit" -> ["", "requests", "5", "edit"]
+    request_id = None
+    if len(parts) in (3, 4) and parts[1] == "requests" and parts[2].isdigit():
+        request_id = int(parts[2])
+        route = "/requests/<id>" + path[len("/requests/" + parts[2]):]
+    elif len(parts) == 3 and parts[1] == "static":
+        route = "/static/<file>"
+    else:
+        route = path
+
+    if route == "/":
+        if method == "GET":
+            return home()
+    elif route == "/about":
+        if method == "GET":
+            return about()
+    elif route == "/requests":
+        if method == "GET":
+            return list_requests()
+        if method == "POST":
+            return create_request(form)
+    elif route == "/requests/new":
+        if method == "GET":
+            return new_request()
+    elif route == "/requests/<id>":
+        if method == "GET":
+            return show_request(request_id)
+    elif route == "/requests/<id>/edit":
+        if method == "GET":
+            return edit_request(request_id)
+        if method == "POST":
+            return update_request(request_id, form)
+    elif route == "/requests/<id>/delete":
+        if method == "GET":
+            return confirm_delete(request_id)
+        if method == "POST":
+            return delete_request(request_id)
+    elif route == "/static/<file>":
+        if method == "GET":
+            return static_file(parts[2])
+    else:
+        return not_found()
+    # the URL exists, but not with this method (for example POST /about)
+    return 405, {"Content-Type": "text/plain; charset=utf-8"}, b"Method Not Allowed"
 
 
-init_db()
+def answer(method, path, form):
+    # like handle_request, but shows the database error page if SQLite fails
+    try:
+        return handle_request(method, path, form)
+    except sqlite3.Error as error:
+        print("Database error:", error)
+        return error_page("Database problem",
+                          "Something went wrong with the database. Please try again later.", 500)
+
+
+# ---------- the web server ----------
+
+class Handler(BaseHTTPRequestHandler):
+    # http.server needs a class; it calls do_GET / do_POST for each request
+
+    def do_GET(self):
+        self.respond("GET")
+
+    def do_HEAD(self):
+        self.respond("HEAD")
+
+    def do_POST(self):
+        self.respond("POST")
+
+    def respond(self, method):
+        path = unquote(urlsplit(self.path).path)  # drop "?..." and decode %20 etc.
+        form = {}
+        if method == "POST":
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length).decode("utf-8", errors="replace")
+            # parse_qs gives lists, like {"title": ["Hi"]}; we keep the first value
+            form = {key: values[0] for key, values in parse_qs(body, keep_blank_values=True).items()}
+        # HEAD is a GET without the page content
+        status, headers, content = answer("GET" if method == "HEAD" else method, path, form)
+        self.send_response(status)
+        for name, value in headers.items():
+            self.send_header(name, value)
+        self.send_header("Content-Length", str(len(content)))
+        self.end_headers()
+        if method != "HEAD":
+            self.wfile.write(content)
+
 
 if __name__ == "__main__":
-    # port 5001 because macOS uses port 5000 for AirPlay
-    app.run(debug=True, port=5001)
+    init_db()
+    server = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
+    print(f"Running on http://localhost:{PORT} (press Ctrl+C to stop)")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\nStopped.")

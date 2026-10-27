@@ -1,59 +1,41 @@
-{% extends "base.html" %}
-{% block title %}{% if editing %}Edit request{% else %}Ask for help{% endif %}{% endblock %}
-{% block content %}
-<h1>{% if editing %}Edit request #{{ request_id }}{% else %}Ask for help{% endif %}</h1>
+<h1>$heading</h1>
 
-{% if errors %}
-<div class="errors" role="alert">
-    <p>Please fix these things:</p>
-    <ul>
-        {% for error in errors %}
-        <li>{{ error }}</li>
-        {% endfor %}
-    </ul>
-</div>
-{% endif %}
+$errors
 
-<form class="form" method="post"
-      action="{% if editing %}{{ url_for('update_request', request_id=request_id) }}{% else %}{{ url_for('create_request') }}{% endif %}">
+<form class="form" method="post" action="$action">
 
     <label for="title">Title</label>
     <input type="text" id="title" name="title" maxlength="100" required
-           placeholder="Help edit a 30-second founder reel" value="{{ data.title }}">
+           placeholder="Help edit a 30-second founder reel" value="$title">
 
     <label for="description">Description</label>
     <textarea id="description" name="description" rows="6" required
-              placeholder="What do you need, by when, and is it paid or a peer exchange?">{{ data.description }}</textarea>
+              placeholder="What do you need, by when, and is it paid or a peer exchange?">$description</textarea>
 
     <label for="display_name">Display name</label>
-    <input type="text" id="display_name" name="display_name" required value="{{ data.display_name }}">
+    <input type="text" id="display_name" name="display_name" required value="$display_name">
 
     <div class="row">
         <div>
             <label for="skill">Skill</label>
             <select id="skill" name="skill" required>
                 <option value="">Choose a skill</option>
-                {% for skill in skills %}
-                <option value="{{ skill }}" {% if data.skill == skill %}selected{% endif %}>{{ skill }}</option>
-                {% endfor %}
+                $skill_options
             </select>
         </div>
         <div>
             <label for="status">Status</label>
             <select id="status" name="status">
-                {% for status in statuses %}
-                <option value="{{ status }}" {% if data.status == status %}selected{% endif %}>{{ status }}</option>
-                {% endfor %}
+                $status_options
             </select>
         </div>
     </div>
 
     <label for="content_link">Content link (optional)</label>
-    <input type="url" id="content_link" name="content_link" placeholder="https://..." value="{{ data.content_link or '' }}">
+    <input type="url" id="content_link" name="content_link" placeholder="https://..." value="$content_link">
 
     <div class="actions">
-        <button class="button" type="submit">{% if editing %}Save changes{% else %}Post request{% endif %}</button>
-        <a href="{% if editing %}{{ url_for('show_request', request_id=request_id) }}{% else %}{{ url_for('list_requests') }}{% endif %}">Cancel</a>
+        <button class="button" type="submit">$button_text</button>
+        <a href="$cancel_url">Cancel</a>
     </div>
 </form>
-{% endblock %}
