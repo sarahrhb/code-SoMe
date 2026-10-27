@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}{{ req.title }}{% endblock %}
+{% block content %}
+<p><a href="{{ url_for('list_requests') }}">&larr; Back to all requests</a></p>
+
+<article class="detail">
+    <span class="tag">{{ req.skill }}</span>
+    <span class="status status-{{ req.status | lower | replace(' ', '-') }}">{{ req.status }}</span>
+    <h1>{{ req.title }}</h1>
+    <p class="by">Asked by {{ req.display_name }} &middot; Request #{{ req.id }}</p>
+
+    <p class="description">{{ req.description }}</p>
+
+    {% if req.content_link %}
+    <p>Content link: <a href="{{ req.content_link }}" rel="noopener nofollow">{{ req.content_link }}</a></p>
+    {% endif %}
+
+    <div class="actions">
+        <a class="button" href="{{ url_for('edit_request', request_id=req.id) }}">Edit</a>
+        <a class="button button-danger" href="{{ url_for('confirm_delete', request_id=req.id) }}">Delete</a>
+    </div>
+</article>
+{% endblock %}

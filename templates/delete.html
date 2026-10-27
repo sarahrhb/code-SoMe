@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Delete request{% endblock %}
+{% block content %}
+<div class="confirm">
+    <h1>Delete this request?</h1>
+    <p>You are about to delete <strong>"{{ req.title }}"</strong> (request #{{ req.id }}). This cannot be undone.</p>
+    <form method="post" action="{{ url_for('delete_request', request_id=req.id) }}">
+        <div class="actions">
+            <button class="button button-danger" type="submit">Yes, delete it</button>
+            <a href="{{ url_for('show_request', request_id=req.id) }}">No, go back</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

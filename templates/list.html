@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Requests{% endblock %}
+{% block content %}
+<section class="intro">
+    <h1>Community requests</h1>
+    <p>Creators from the CODE incubator ask for help with editing, filming, design and more.</p>
+    <a class="button" href="{{ url_for('new_request') }}">+ Ask for help</a>
+</section>
+
+{% if requests %}
+<ul class="cards">
+    {% for req in requests %}
+    <li class="card">
+        <span class="tag">{{ req.skill }}</span>
+        <span class="status status-{{ req.status | lower | replace(' ', '-') }}">{{ req.status }}</span>
+        <h2><a href="{{ url_for('show_request', request_id=req.id) }}">{{ req.title }}</a></h2>
+        <p class="by">by {{ req.display_name }}</p>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<p class="empty">No requests yet. Be the first to ask for help!</p>
+{% endif %}
+{% endblock %}
