@@ -22,7 +22,7 @@ editing, filming, design, copywriting or feedback.
 
 ## How to start it
 
-You need Python 3. There is nothing to install.
+You need Python 3.
 
 ```bash
 python3 app.py
