@@ -31,15 +31,6 @@ python app.py
 
 Then open http://localhost:5001 in your browser.
 
-(I use port 5001 because on a Mac port 5000 is used by AirPlay.)
-
-## Database
-
-The database file `board.db` is created automatically the first time the app starts.
-If it is empty, three example requests are added.
-
-To start again with fresh example data, stop the app, delete `board.db` and start it again.
-
 ## Data model: HelpRequest
 
 | Field | Meaning |
