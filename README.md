@@ -1,10 +1,7 @@
 # CODE Creator Board
 
-A small website where creators from the CODE incubator can ask each other for help:
+A small website where CODE students can ask each other for help creating content:
 editing, filming, design, copywriting or feedback.
-
-This is a student project for the Web Tech module. It is not an official CODE service.
-All names in the demo are fictional.
 
 ## What you can do
 
