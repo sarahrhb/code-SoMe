@@ -109,6 +109,32 @@ h1 {
     margin-bottom: 20px;
 }
 
+.filters {
+    max-width: 560px;
+    margin: 20px 0;
+}
+
+.filters label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+.filters input {
+    width: 100%;
+    padding: 8px;
+    font-size: 1rem;
+    font-family: inherit;
+    border: 1px solid #aaa;
+    border-radius: 6px;
+}
+
+.filters p,
+.form-note {
+    color: #555;
+    font-size: 0.9rem;
+}
+
 .cards {
     list-style: none;
     padding: 0;

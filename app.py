@@ -3,19 +3,21 @@
 # Data is saved in a SQLite database. Pages are HTML files in templates/
 # with $placeholders that Python fills in.
 
+import base64
 import html
 import mimetypes
 import os
+import secrets
 import sqlite3
 import string
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlsplit
 
-DATABASE = "board.db"
 PORT = 5001
 
 # folders next to this file
 HERE = os.path.dirname(os.path.abspath(__file__))
+DATABASE = os.path.join(HERE, "board.db")
 TEMPLATES = os.path.join(HERE, "templates")
 STATIC = os.path.join(HERE, "static")
 
@@ -364,6 +366,34 @@ def answer(method, path, form):
                           "Something went wrong with the database. Please try again later.", 500)
 
 
+def same_site_form(headers):
+    # Browsers send Origin for forms. Referer is a fallback for older clients.
+    host = headers.get("Host", "").lower()
+    source = headers.get("Origin") or headers.get("Referer")
+    if not host or not source:
+        return False
+    parsed = urlsplit(source)
+    return parsed.scheme in ("http", "https") and parsed.netloc.lower() == host
+
+
+def has_write_password(headers):
+    # One shared password keeps this demo simple. It is not a user account system.
+    expected_password = os.environ.get("BOARD_WRITE_PASSWORD", "")
+    if not expected_password:
+        return None  # editing is disabled until the owner sets a password
+
+    authorization = headers.get("Authorization", "")
+    try:
+        scheme, encoded = authorization.split(" ", 1)
+        if scheme.lower() != "basic":
+            return False
+        username, password = base64.b64decode(encoded, validate=True).decode("utf-8").split(":", 1)
+    except (ValueError, UnicodeDecodeError):
+        return False
+
+    return username == "community" and secrets.compare_digest(password, expected_password)
+
+
 # the web server!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 class Handler(BaseHTTPRequestHandler):
@@ -380,6 +410,22 @@ class Handler(BaseHTTPRequestHandler):
 
     def respond(self, method):
         path = unquote(urlsplit(self.path).path)  # drop "?..." and decode %20 etc.
+        if method == "POST":
+            if not same_site_form(self.headers):
+                self.send_simple(403, "This form must be submitted from the board website.")
+                return
+            password_ok = has_write_password(self.headers)
+            if password_ok is None:
+                self.send_simple(503, "Board editing is disabled until BOARD_WRITE_PASSWORD is set.")
+                return
+            if not password_ok:
+                self.send_simple(
+                    401,
+                    "Enter the shared board password. The username is community.",
+                    {"WWW-Authenticate": 'Basic realm="CODE Creator Board", charset="UTF-8"'},
+                )
+                return
+
         form = {}
         if method == "POST":
             length = int(self.headers.get("Content-Length", 0))
@@ -395,6 +441,16 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         if method != "HEAD":
             self.wfile.write(content)
+
+    def send_simple(self, status, message, extra_headers=None):
+        content = (message + "\n").encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Length", str(len(content)))
+        for name, value in (extra_headers or {}).items():
+            self.send_header(name, value)
+        self.end_headers()
+        self.wfile.write(content)
 
 
 if __name__ == "__main__":
