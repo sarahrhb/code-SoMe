@@ -16,6 +16,8 @@ The website is meant to be a place for these requests. Slack is so crowded, and 
 - Edit a request
 - Delete a request
 - Keep the request status visible for follow-through
+- Let a signed-in member offer to help on someone else's request
+- Let the request owner see the helper's username and CODE email; helpers can withdraw their offer
 - Give completed requests a receipt look and a crumple animation; the request stays saved
 
 ## Tech
@@ -88,6 +90,10 @@ account that created them.
 | status | Open, In progress or Done |
 | owner_id | account that created the request; old requests have no owner |
 
+The `request_helpers` table links a request to the accounts that offered help. The
+helper's email is shown only on that request's page to its owner. Before submitting,
+the helper sees a note that their CODE email will be shared. They can withdraw later.
+
 ## Routes
 
 | Method | Route | What it does |
@@ -105,11 +111,14 @@ account that created them.
 | POST | /requests/&lt;id&gt;/edit | saves the changes (same id) |
 | GET | /requests/&lt;id&gt;/delete | asks "are you sure?" |
 | POST | /requests/&lt;id&gt;/delete | really deletes the request |
+| POST | /requests/&lt;id&gt;/interest | offers help and shares the signed-in member's saved email with the owner |
+| POST | /requests/&lt;id&gt;/interest/withdraw | withdraws that offer |
 
 
 ## Known limits
 
 - Everyone can read the requests; accounts only control who may change each request.
+- A helper's saved email is shared with the owner only after the helper chooses “I want to help”.
 - Old requests have no account owner and are read-only.
 - The browser-side feature only filters the list; it does not create or save records.
 - The temporary `sslip.io` address remains available as a fallback.
