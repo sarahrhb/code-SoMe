@@ -24,15 +24,12 @@ def get_db():
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row  # so I can use row["title"]
     return conn
-
-
 def run_query(sql, params=()):
     conn = get_db()
     rows = conn.execute(sql, params).fetchall()
     conn.commit()
     conn.close()
     return rows
-
 def init_db():
     conn = get_db()
     conn.execute("""
@@ -65,16 +62,12 @@ def init_db():
         )
     conn.commit()
     conn.close()
-
-
 def get_request(request_id):
     # return one request, or None if this id does not exist
     rows = run_query("SELECT * FROM help_requests WHERE id = ?", (request_id,))
     if rows:
         return rows[0]
     return None
-
-
 def check_form(form):
     # read the form and return (data, errors)
     data = {
@@ -103,13 +96,10 @@ def check_form(form):
     return data, errors
 
 
-# here starts making pages!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# end of database my girrlll
 
 
 def render(name, safe=None, **values):
-    # fill the $placeholders in templates/<name>.
-    # Every normal value is escaped, so text people type can't become HTML.
-    # "safe" is for pieces of HTML we built ourselves (they are already escaped).
     with open(os.path.join(TEMPLATES, name), encoding="utf-8") as file:
         template = string.Template(file.read())
     filled = {key: html.escape(str(value)) for key, value in values.items()}
@@ -117,16 +107,14 @@ def render(name, safe=None, **values):
     return template.substitute(filled)
 
 
-def page(page_title, name, http_status=200, safe=None, **values):
-    # put a template inside base.html and return a full response
+def page(page_title, name, http_status=200, safe=None, **values): 
     content = render(name, safe, **values)
-    body = render("base.html", safe={"content": content}, page_title=page_title)
+    body = render("base.html", safe={"content": content}, page_title=page_title) # put a template inside base.html
     return http_status, {"Content-Type": "text/html; charset=utf-8"}, body.encode("utf-8")
 
 
 def redirect(url):
-    # tell the browser to go to another page
-    return 302, {"Location": url}, b""
+    return 302, {"Location": url}, b"" # telling the browser to go to another page
 
 
 def error_page(title, message, status):
@@ -138,13 +126,11 @@ def not_found():
                       "This page or request does not exist (maybe it was deleted).", 404)
 
 
-def status_class(status):
-    # "In progress" -> "status-in-progress" (used by the CSS for colours)
+def status_class(status): # "In progress" -> "status-in-progress" etc etc
     return "status-" + status.lower().replace(" ", "-")
 
 
 def make_options(choices, chosen):
-    # <option> tags for a <select>, with the chosen one selected
     options = []
     for choice in choices:
         selected = " selected" if choice == chosen else ""
@@ -154,7 +140,6 @@ def make_options(choices, chosen):
 
 
 def render_form(data, errors=None, request_id=None, status=200):
-    # show the form page; we are editing if we know which request it is
     editing = request_id is not None
     errors_html = ""
     if errors:
@@ -183,16 +168,12 @@ def render_form(data, errors=None, request_id=None, status=200):
                 content_link=data["content_link"] or "")
 
 
-# the pages (one function per route)!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# the pages 
 
 def home():
     return redirect("/requests")
-
-
 def about():
     return page("About", "about.html")
-
-
 def list_requests():
     rows = run_query("SELECT * FROM help_requests ORDER BY id DESC")
     if not rows:
@@ -206,14 +187,10 @@ def list_requests():
                             display_name=row["display_name"]))
     cards_html = '<ul class="cards">\n' + "\n".join(cards) + "\n</ul>"
     return page("Requests", "list.html", safe={"cards": cards_html})
-
-
 def new_request():
     empty = {"title": "", "description": "", "display_name": "", "skill": "",
              "content_link": "", "status": "Open"}
     return render_form(empty)
-
-
 def create_request(form):
     data, errors = check_form(form)
     if errors:
@@ -229,7 +206,6 @@ def create_request(form):
     new_id = cursor.lastrowid
     conn.close()
     return redirect(f"/requests/{new_id}")
-
 
 def show_request(request_id):
     row = get_request(request_id)
@@ -267,8 +243,7 @@ def update_request(request_id, form):
     return redirect(f"/requests/{request_id}")
 
 
-def confirm_delete(request_id):
-    # only shows a question, nothing is deleted here
+def confirm_delete(request_id):# shows a question
     row = get_request(request_id)
     if row is None:
         return not_found()
@@ -282,8 +257,7 @@ def delete_request(request_id):
     return redirect("/requests")
 
 
-def static_file(filename):
-    # send a file from static/ (only files that are really in that folder)
+def static_file(filename):# send a file from static
     if filename not in os.listdir(STATIC):
         return not_found()
     with open(os.path.join(STATIC, filename), "rb") as file:
@@ -292,12 +266,10 @@ def static_file(filename):
     return 200, {"Content-Type": content_type}, body
 
 
-# routing: which function answers which URL!!!!!!!!!!!!!!!!!!!!!!!!!
-
+# routing
 def handle_request(method, path, form):
-    # The same URL can have a GET and a POST version.
-    # For /requests/<id>/... we read the id from the URL (a "dynamic route").
-    parts = path.split("/")  # "/requests/5/edit" -> ["", "requests", "5", "edit"]
+    For /requests/<id>/... we read the id from the URL (a "dynamic route").
+    parts = path.split("/") 
     request_id = None
     if len(parts) in (3, 4) and parts[1] == "requests" and parts[2].isdigit():
         request_id = int(parts[2])
@@ -339,12 +311,10 @@ def handle_request(method, path, form):
             return static_file(parts[2])
     else:
         return not_found()
-    # the URL exists, but not with this method (for example POST /about)
     return 405, {"Content-Type": "text/plain; charset=utf-8"}, b"Method Not Allowed"
 
 
 def answer(method, path, form):
-    # like handle_request, but shows the database error page if SQLite fails
     try:
         return handle_request(method, path, form)
     except sqlite3.Error as error:
@@ -353,29 +323,21 @@ def answer(method, path, form):
                           "Something went wrong with the database. Please try again later.", 500)
 
 
-# the web server!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
+# the web server things here
 class Handler(BaseHTTPRequestHandler):
-    # http.server needs a class; it calls do_GET / do_POST for each request
-
     def do_GET(self):
         self.respond("GET")
-
     def do_HEAD(self):
         self.respond("HEAD")
-
     def do_POST(self):
         self.respond("POST")
-
     def respond(self, method):
-        path = unquote(urlsplit(self.path).path)  # drop "?..." and decode %20 etc.
+        path = unquote(urlsplit(self.path).path) 
         form = {}
         if method == "POST":
             length = int(self.headers.get("Content-Length", 0))
             body = self.rfile.read(length).decode("utf-8", errors="replace")
-            # parse_qs gives lists, like {"title": ["Hi"]}; we keep the first value
             form = {key: values[0] for key, values in parse_qs(body, keep_blank_values=True).items()}
-        # HEAD is a GET without the page content
         status, headers, content = answer("GET" if method == "HEAD" else method, path, form)
         self.send_response(status)
         for name, value in headers.items():
@@ -384,7 +346,6 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         if method != "HEAD":
             self.wfile.write(content)
-
 
 if __name__ == "__main__":
     init_db()
