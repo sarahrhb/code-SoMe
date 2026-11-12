@@ -81,6 +81,14 @@ def init_db():
     if "owner_id" not in columns:
         # Old requests have no owner and remain read-only.
         conn.execute("ALTER TABLE help_requests ADD COLUMN owner_id INTEGER REFERENCES users(id)")
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS request_helpers (
+            request_id INTEGER NOT NULL REFERENCES help_requests(id),
+            helper_id INTEGER NOT NULL REFERENCES users(id),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE (request_id, helper_id)
+        )
+    """)
     conn.commit()
     conn.close()
 
@@ -302,9 +310,56 @@ def show_request(request_id):
         link = html.escape(row["content_link"])
         link_html = f'<p>Content link: <a href="{link}" rel="noopener nofollow">{link}</a></p>'
     owner_actions = ""
+    help_action = ""
+    helpers_html = ""
     if request_context.user and row["owner_id"] == request_context.user["id"]:
         owner_actions = (f'<div class="actions"><a class="button" href="/requests/{row["id"]}/edit">Edit</a> '
                          f'<a class="button button-danger" href="/requests/{row["id"]}/delete">Delete</a></div>')
+        helpers = run_query(
+            "SELECT users.username, users.email, request_helpers.created_at "
+            "FROM request_helpers JOIN users ON users.id = request_helpers.helper_id "
+            "WHERE request_helpers.request_id = ? ORDER BY request_helpers.created_at",
+            (row["id"],),
+        )
+        if helpers:
+            helper_rows = "".join(
+                "<li><strong>" + html.escape(helper["username"]) + "</strong> · "
+                + html.escape(helper["email"] or "No email saved") + "</li>"
+                for helper in helpers
+            )
+            helpers_html = (
+                '<section class="helper-list"><p class="eyebrow">PEOPLE WHO WANT TO HELP</p>'
+                '<p>These people chose to share their CODE email with you.</p><ul>'
+                + helper_rows + "</ul></section>"
+            )
+        else:
+            helpers_html = (
+                '<section class="helper-list"><p class="eyebrow">PEOPLE WHO WANT TO HELP</p>'
+                '<p>No one has offered yet.</p></section>'
+            )
+    elif request_context.user and row["status"] != "Done":
+        user_rows = run_query("SELECT email FROM users WHERE id = ?", (request_context.user["id"],))
+        has_email = bool(user_rows and user_rows[0]["email"])
+        already_offered = bool(run_query(
+            "SELECT 1 FROM request_helpers WHERE request_id = ? AND helper_id = ?",
+            (row["id"], request_context.user["id"]),
+        ))
+        if already_offered:
+            help_action = (
+                '<div class="help-action"><p>You have offered to help. The request owner can see your CODE email.</p>'
+                f'<form method="post" action="/requests/{row["id"]}/interest/withdraw">{csrf_input()}'
+                '<button class="button button-quiet" type="submit">Withdraw my offer</button></form></div>'
+            )
+        elif has_email:
+            help_action = (
+                '<div class="help-action"><p>Want to help? Choose below and we’ll share your CODE email with the person who posted this request.</p>'
+                f'<form method="post" action="/requests/{row["id"]}/interest">{csrf_input()}'
+                '<button class="button" type="submit">I want to help <span aria-hidden="true">↗</span></button></form></div>'
+            )
+        else:
+            help_action = '<p class="help-action">Your account has no email address saved, so you cannot offer to help.</p>'
+    elif not request_context.user and row["status"] != "Done":
+        help_action = '<p class="help-action"><a href="/login">Sign in</a> to offer help. Your CODE email will be shared with the request owner.</p>'
     detail_class = "completed-request" if row["status"] == "Done" else "open-request"
     receipt_control = ""
     if row["status"] == "Done":
@@ -316,7 +371,9 @@ def show_request(request_id):
             '</div>'
         )
     return page(row["title"], "detail.html",
-                safe={"link": link_html, "owner_actions": owner_actions, "receipt_control": receipt_control},
+                safe={"link": link_html, "owner_actions": owner_actions,
+                      "help_action": help_action, "helpers": helpers_html,
+                      "receipt_control": receipt_control},
                 id=row["id"], title=row["title"], skill=row["skill"],
                 status=row["status"], status_class=status_class(row["status"]), detail_class=detail_class,
                 display_name=row["display_name"], description=row["description"])
@@ -364,8 +421,41 @@ def delete_request(request_id):
         return not_found()
     if not request_context.user or row["owner_id"] != request_context.user["id"]:
         return error_page("Not your request", "You can only delete requests created by your account.", 403)
-    run_query("DELETE FROM help_requests WHERE id = ? AND owner_id = ?", (request_id, request_context.user["id"]))
+    conn = get_db()
+    conn.execute("DELETE FROM request_helpers WHERE request_id = ?", (request_id,))
+    conn.execute("DELETE FROM help_requests WHERE id = ? AND owner_id = ?", (request_id, request_context.user["id"]))
+    conn.commit()
+    conn.close()
     return redirect("/requests")
+
+
+def offer_help(request_id):
+    row = get_request(request_id)
+    if row is None:
+        return not_found()
+    if not request_context.user:
+        return redirect("/login")
+    if row["owner_id"] == request_context.user["id"]:
+        return error_page("This is your request", "You cannot offer help on your own request.", 400)
+    if row["status"] == "Done":
+        return error_page("Request completed", "This request is marked done and is no longer taking offers.", 400)
+    users = run_query("SELECT email FROM users WHERE id = ?", (request_context.user["id"],))
+    if not users or not users[0]["email"]:
+        return error_page("Email needed", "Add a CODE email to your account before offering help.", 400)
+    run_query("INSERT OR IGNORE INTO request_helpers (request_id, helper_id) VALUES (?, ?)",
+              (request_id, request_context.user["id"]))
+    return redirect(f"/requests/{request_id}")
+
+
+def withdraw_help(request_id):
+    row = get_request(request_id)
+    if row is None:
+        return not_found()
+    if not request_context.user:
+        return redirect("/login")
+    run_query("DELETE FROM request_helpers WHERE request_id = ? AND helper_id = ?",
+              (request_id, request_context.user["id"]))
+    return redirect(f"/requests/{request_id}")
 
 
 def login_page(message=""):
@@ -428,7 +518,7 @@ def static_file(filename):
 def handle_request(method, path, form):
     parts = path.split("/")  # "/requests/5/edit" -> ["", "requests", "5", "edit"]
     request_id = None
-    if len(parts) in (3, 4) and parts[1] == "requests" and parts[2].isdigit():
+    if len(parts) in (3, 4, 5) and parts[1] == "requests" and parts[2].isdigit():
         request_id = int(parts[2])
         route = "/requests/<id>" + path[len("/requests/" + parts[2]):]
     elif len(parts) == 3 and parts[1] == "static":
@@ -477,6 +567,12 @@ def handle_request(method, path, form):
             return confirm_delete(request_id)
         if method == "POST":
             return delete_request(request_id)
+    elif route == "/requests/<id>/interest":
+        if method == "POST":
+            return offer_help(request_id)
+    elif route == "/requests/<id>/interest/withdraw":
+        if method == "POST":
+            return withdraw_help(request_id)
     elif route == "/static/<file>":
         if method == "GET":
             return static_file(parts[2])
