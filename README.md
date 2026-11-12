@@ -15,9 +15,10 @@ The website is meant to be a place for these requests. Slack is so crowded, and 
 - Create a new request
 - Edit a request
 - Delete a request
-- Keep the request status visible for follow-through
-- Let a signed-in member offer to help on someone else's request
-- Let the request owner see the helper's username and CODE email; helpers can withdraw their offer
+- Keep the request status visible as open or done
+- Let a signed-in member apply to help on someone else's request
+- Let the request owner accept or decline applications and see applicants' CODE emails
+- Let applicants withdraw or apply again after a decline
 - Give completed requests a receipt look and a crumple animation; the request stays saved
 
 ## Tech
@@ -87,12 +88,15 @@ account that created them.
 | display_name | account username shown on new requests |
 | skill | Editing, Filming, Design, Copywriting, Feedback or Other |
 | content_link | optional link, must start with http:// or https:// |
-| status | Open, In progress or Done |
+| status | Open or Done |
 | owner_id | account that created the request; old requests have no owner |
 
-The `request_helpers` table links a request to the accounts that offered help. The
-helper's email is shown only on that request's page to its owner. Before submitting,
-the helper sees a note that their CODE email will be shared. They can withdraw later.
+The `request_helpers` table links a request to applicants. Each application is pending,
+accepted, or declined. The applicant must check a box agreeing to share their CODE email
+with the requester before applying. The requester can accept or decline each pending
+application. Accepted helpers see an in-app notice and can find open projects on the `My
+help` page. Applicants can withdraw while pending or accepted, including after a request
+is done.
 
 ## Routes
 
@@ -100,6 +104,7 @@ the helper sees a note that their CODE email will be shared. They can withdraw l
 | --- | --- | --- |
 | GET | / | goes to /requests |
 | GET | /requests | list of all requests |
+| GET | /my-help | accepted projects for the signed-in helper |
 | GET | /requests/&lt;id&gt; | one request (dynamic route) |
 | GET | /about | about page |
 | GET/POST | /login | sign in |
@@ -111,14 +116,16 @@ the helper sees a note that their CODE email will be shared. They can withdraw l
 | POST | /requests/&lt;id&gt;/edit | saves the changes (same id) |
 | GET | /requests/&lt;id&gt;/delete | asks "are you sure?" |
 | POST | /requests/&lt;id&gt;/delete | really deletes the request |
-| POST | /requests/&lt;id&gt;/interest | offers help and shares the signed-in member's saved email with the owner |
-| POST | /requests/&lt;id&gt;/interest/withdraw | withdraws that offer |
+| POST | /requests/&lt;id&gt;/interest | applies to help after email-sharing consent; the owner sees the applicant's saved email |
+| POST | /requests/&lt;id&gt;/applications | lets the owner accept or decline an application |
+| POST | /requests/&lt;id&gt;/interest/withdraw | withdraws an application or accepted offer |
 
 
 ## Known limits
 
 - Everyone can read the requests; accounts only control who may change each request.
-- A helper's saved email is shared with the owner only after the helper chooses “I want to help”.
+- A helper's saved email is shown to the requester only after the helper checks the consent box and applies.
+- The acceptance notice is inside the website; the app does not send email or push notifications.
 - Old requests have no account owner and are read-only.
 - The browser-side feature only filters the list; it does not create or save records.
 - The temporary `sslip.io` address remains available as a fallback.

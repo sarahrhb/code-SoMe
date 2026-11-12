@@ -24,7 +24,7 @@ TEMPLATES = os.path.join(HERE, "templates")
 STATIC = os.path.join(HERE, "static")
 
 SKILLS = ["Editing", "Filming", "Design", "Copywriting", "Feedback", "Other"]
-STATUSES = ["Open", "In progress", "Done"]
+STATUSES = ["Open", "Done"]
 SESSION_SECRET = os.environ.get("SESSION_SECRET", "") or secrets.token_urlsafe(48)
 COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "0") == "1"
 SESSION_SECONDS = 7 * 24 * 60 * 60
@@ -81,14 +81,23 @@ def init_db():
     if "owner_id" not in columns:
         # Old requests have no owner and remain read-only.
         conn.execute("ALTER TABLE help_requests ADD COLUMN owner_id INTEGER REFERENCES users(id)")
+    conn.execute("UPDATE help_requests SET status = 'Open' WHERE status = 'In progress'")
     conn.execute("""
         CREATE TABLE IF NOT EXISTS request_helpers (
             request_id INTEGER NOT NULL REFERENCES help_requests(id),
             helper_id INTEGER NOT NULL REFERENCES users(id),
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            decision TEXT NOT NULL DEFAULT 'Pending',
             UNIQUE (request_id, helper_id)
         )
     """)
+    helper_columns = {row["name"] for row in conn.execute("PRAGMA table_info(request_helpers)")}
+    if "decision" not in helper_columns:
+        # Older offers become pending applications for the request owner to review.
+        conn.execute("ALTER TABLE request_helpers ADD COLUMN decision TEXT NOT NULL DEFAULT 'Pending'")
+    if "email_shared" not in helper_columns:
+        # Existing applications did not record consent, so do not reveal their email.
+        conn.execute("ALTER TABLE request_helpers ADD COLUMN email_shared INTEGER NOT NULL DEFAULT 0")
     conn.commit()
     conn.close()
 
@@ -177,6 +186,7 @@ def page(page_title, name, http_status=200, safe=None, **values):
     user = getattr(request_context, "user", None)
     if user:
         controls = (f'<span>Signed in as {html.escape(user["username"])}</span> '
+                    '<a href="/my-help">My help</a> '
                     f'<form class="inline-form" method="post" action="/logout">{csrf_input()}'
                     '<button type="submit">Sign out</button></form>')
     else:
@@ -251,9 +261,14 @@ def about():
 
 def list_requests():
     rows = run_query("SELECT * FROM help_requests ORDER BY id DESC")
+    notification = ""
+    if request_context.user and accepted_help_for_user(request_context.user["id"]):
+        notification = ('<aside class="accepted-notice" aria-live="polite">'
+                        '<strong>Good news — someone accepted your offer to help.</strong> '
+                        '<a href="/my-help">See the project you’re helping</a></aside>')
     if not rows:
         empty = '<p class="empty">No requests yet. Be the first to ask for help!</p>'
-        return page("Requests", "list.html", safe={"cards": empty},
+        return page("Requests", "list.html", safe={"cards": empty, "notification": notification},
                     account_message=("Signed in as " + request_context.user["username"]
                                      if request_context.user else "Everyone can read requests. Sign in to post your own."))
     cards = []
@@ -269,7 +284,7 @@ def list_requests():
                             author_initial=row["display_name"][:1].upper(),
                             card_class="done-card" if row["status"] == "Done" else ""))
     cards_html = '<ul class="cards">\n' + "\n".join(cards) + "\n</ul>"
-    return page("Requests", "list.html", safe={"cards": cards_html},
+    return page("Requests", "list.html", safe={"cards": cards_html, "notification": notification},
                 account_message=("Signed in as " + request_context.user["username"]
                                  if request_context.user else "Everyone can read requests. Sign in to post your own."))
 
@@ -316,51 +331,96 @@ def show_request(request_id):
         owner_actions = (f'<div class="actions"><a class="button" href="/requests/{row["id"]}/edit">Edit</a> '
                          f'<a class="button button-danger" href="/requests/{row["id"]}/delete">Delete</a></div>')
         helpers = run_query(
-            "SELECT users.username, users.email, request_helpers.created_at "
+            "SELECT users.id, users.username, users.email, request_helpers.email_shared, request_helpers.decision, request_helpers.created_at "
             "FROM request_helpers JOIN users ON users.id = request_helpers.helper_id "
-            "WHERE request_helpers.request_id = ? ORDER BY request_helpers.created_at",
+            "WHERE request_helpers.request_id = ? AND request_helpers.decision IN ('Pending', 'Accepted') "
+            "ORDER BY CASE request_helpers.decision WHEN 'Pending' THEN 0 ELSE 1 END, request_helpers.created_at",
             (row["id"],),
         )
         if helpers:
-            helper_rows = "".join(
-                "<li><strong>" + html.escape(helper["username"]) + "</strong> · "
-                + html.escape(helper["email"] or "No email saved") + "</li>"
-                for helper in helpers
-            )
+            helper_rows = []
+            for helper in helpers:
+                username = html.escape(helper["username"])
+                email = html.escape(helper["email"] or "No email saved") if helper["email_shared"] else "Email not shared"
+                decision = helper["decision"]
+                if decision == "Pending":
+                    if row["status"] != "Done":
+                        accept_form = (
+                            f'<form method="post" action="/requests/{row["id"]}/applications">{csrf_input()}'
+                            f'<input type="hidden" name="helper_id" value="{int(helper["id"])}">'
+                            '<button class="button application-button" type="submit" name="decision" value="accept">Accept their help</button></form>'
+                        )
+                        decline_form = (
+                            f'<form method="post" action="/requests/{row["id"]}/applications">{csrf_input()}'
+                            f'<input type="hidden" name="helper_id" value="{int(helper["id"])}">'
+                            '<button class="button button-quiet application-button" type="submit" name="decision" value="decline">Decline</button></form>'
+                        )
+                        buttons = accept_form + decline_form
+                    else:
+                        buttons = (
+                            f'<form method="post" action="/requests/{row["id"]}/applications">{csrf_input()}'
+                            f'<input type="hidden" name="helper_id" value="{int(helper["id"])}">'
+                            '<button class="button button-quiet application-button" type="submit" name="decision" value="decline">Decline</button></form>'
+                        )
+                    controls = '<div class="application-actions">' + buttons + '</div>'
+                    status_label = '<span class="application-status pending">Pending</span>'
+                else:
+                    controls = '<span class="application-status accepted">Accepted</span>'
+                    status_label = ""
+                helper_rows.append(
+                    '<li class="application-row"><div class="application-person">'
+                    f'<strong>{username}</strong> {status_label}<small>{email}</small></div>{controls}</li>'
+                )
             helpers_html = (
-                '<section class="helper-list"><p class="eyebrow">PEOPLE WHO WANT TO HELP</p>'
-                '<p>These people chose to share their CODE email with you.</p><ul>'
-                + helper_rows + "</ul></section>"
+                '<section class="helper-list"><p class="eyebrow">HELP APPLICATIONS</p>'
+                '<p>Applicants’ CODE emails are shown only to you. Accept or decline each application.</p><ul>'
+                + "".join(helper_rows) + "</ul></section>"
             )
         else:
             helpers_html = (
-                '<section class="helper-list"><p class="eyebrow">PEOPLE WHO WANT TO HELP</p>'
-                '<p>No one has offered yet.</p></section>'
+                '<section class="helper-list"><p class="eyebrow">HELP APPLICATIONS</p>'
+                '<p>No pending applications or accepted helpers yet.</p></section>'
             )
     elif request_context.user:
-        already_offered = bool(run_query(
-            "SELECT 1 FROM request_helpers WHERE request_id = ? AND helper_id = ?",
+        applications = run_query(
+            "SELECT decision FROM request_helpers WHERE request_id = ? AND helper_id = ?",
             (row["id"], request_context.user["id"]),
-        ))
-        if already_offered:
+        )
+        decision = applications[0]["decision"] if applications else None
+        if decision in ("Pending", "Accepted"):
+            message = ("Your application is waiting for a reply. The requester can see your CODE email."
+                       if decision == "Pending" else "Good news — the requester accepted your help! You can now help with this project. Visit <a href=\"/my-help\">My help</a> to find it again.")
             help_action = (
-                '<div class="help-action"><p>You have offered to help. The request owner can see your CODE email.</p>'
+                f'<div class="help-action"><p>{message}</p>'
                 f'<form method="post" action="/requests/{row["id"]}/interest/withdraw">{csrf_input()}'
-                '<button class="button button-quiet" type="submit">Withdraw my offer</button></form></div>'
+                '<button class="button button-quiet" type="submit">Withdraw application</button></form></div>'
             )
+        elif decision == "Declined":
+            if row["status"] != "Done":
+                help_action = (
+                    '<div class="help-action"><p>The requester declined this application. You can apply again if you’d still like to help.</p>'
+                    f'<form method="post" action="/requests/{row["id"]}/interest">{csrf_input()}'
+                    '<label class="consent-check"><input type="checkbox" name="share_email" value="yes" required>'
+                    '<span>I agree to share my CODE email with the requester so they can contact me about helping.</span></label>'
+                    '<button class="button" type="submit">Apply again</button></form></div>'
+                )
+            else:
+                help_action = '<p class="help-action">The requester declined this application.</p>'
         elif row["status"] != "Done":
             user_rows = run_query("SELECT email FROM users WHERE id = ?", (request_context.user["id"],))
             has_email = bool(user_rows and user_rows[0]["email"])
             if has_email:
                 help_action = (
-                    '<div class="help-action"><p>Want to help? Choose below and we’ll share your CODE email with the person who posted this request.</p>'
+                    '<div class="help-action"><p>Apply to help? The requester will see your CODE email so they can decide.</p>'
                     f'<form method="post" action="/requests/{row["id"]}/interest">{csrf_input()}'
-                    '<button class="button" type="submit">I want to help <span aria-hidden="true">↗</span></button></form></div>'
+                    '<label class="consent-check"><input type="checkbox" name="share_email" value="yes" required>'
+                    '<span>I agree to share my CODE email with the requester so they can contact me about helping.</span></label>'
+                    '<button class="button" type="submit">Apply to help <span aria-hidden="true">↗</span></button></form></div>'
                 )
             else:
-                help_action = '<p class="help-action">Your account has no email address saved, so you cannot offer to help.</p>'
+                help_action = '<p class="help-action">Your account has no email address saved, so you cannot apply to help.</p>'
     elif not request_context.user and row["status"] != "Done":
-        help_action = '<p class="help-action"><a href="/login">Sign in</a> to offer help. Your CODE email will be shared with the request owner.</p>'
+        help_action = '<p class="help-action"><a href="/login">Sign in</a> to apply to help. Your CODE email will be shared with the request owner for their decision.</p>'
     detail_class = "completed-request" if row["status"] == "Done" else "open-request"
     receipt_control = ""
     if row["status"] == "Done":
@@ -430,7 +490,7 @@ def delete_request(request_id):
     return redirect("/requests")
 
 
-def offer_help(request_id):
+def offer_help(request_id, form):
     row = get_request(request_id)
     if row is None:
         return not_found()
@@ -438,13 +498,52 @@ def offer_help(request_id):
         return redirect("/login")
     if row["owner_id"] == request_context.user["id"]:
         return error_page("This is your request", "You cannot offer help on your own request.", 400)
+    if form.get("share_email") != "yes":
+        return error_page("Please confirm email sharing", "Check the box to agree to share your CODE email with the requester before applying.", 400)
     if row["status"] == "Done":
         return error_page("Request completed", "This request is marked done and is no longer taking offers.", 400)
     users = run_query("SELECT email FROM users WHERE id = ?", (request_context.user["id"],))
     if not users or not users[0]["email"]:
         return error_page("Email needed", "Add a CODE email to your account before offering help.", 400)
-    run_query("INSERT OR IGNORE INTO request_helpers (request_id, helper_id) VALUES (?, ?)",
-              (request_id, request_context.user["id"]))
+    existing = run_query(
+        "SELECT decision FROM request_helpers WHERE request_id = ? AND helper_id = ?",
+        (request_id, request_context.user["id"]),
+    )
+    if existing and existing[0]["decision"] == "Declined":
+        run_query(
+            "UPDATE request_helpers SET decision = 'Pending', email_shared = 1, created_at = CURRENT_TIMESTAMP "
+            "WHERE request_id = ? AND helper_id = ? AND decision = 'Declined'",
+            (request_id, request_context.user["id"]),
+        )
+    elif not existing:
+        run_query("INSERT INTO request_helpers (request_id, helper_id, decision, email_shared) VALUES (?, ?, 'Pending', 1)",
+                  (request_id, request_context.user["id"]))
+    return redirect(f"/requests/{request_id}")
+
+
+def decide_application(request_id, form):
+    row = get_request(request_id)
+    if row is None:
+        return not_found()
+    if not request_context.user or row["owner_id"] != request_context.user["id"]:
+        return error_page("Not your request", "Only the requester can accept or decline applications.", 403)
+    helper_id = form.get("helper_id", "")
+    decision = form.get("decision", "")
+    if not helper_id.isdigit() or decision not in ("accept", "decline"):
+        return error_page("Invalid decision", "Choose a valid application and decision.", 400)
+    application = run_query(
+        "SELECT decision FROM request_helpers WHERE request_id = ? AND helper_id = ?",
+        (request_id, int(helper_id)),
+    )
+    if not application or application[0]["decision"] != "Pending":
+        return error_page("Application already reviewed", "This application is no longer waiting for a decision.", 400)
+    if decision == "accept" and row["status"] == "Done":
+        return error_page("Request completed", "A completed request cannot accept another helper.", 400)
+    next_decision = "Accepted" if decision == "accept" else "Declined"
+    run_query(
+        "UPDATE request_helpers SET decision = ? WHERE request_id = ? AND helper_id = ? AND decision = 'Pending'",
+        (next_decision, request_id, int(helper_id)),
+    )
     return redirect(f"/requests/{request_id}")
 
 
@@ -457,6 +556,37 @@ def withdraw_help(request_id):
     run_query("DELETE FROM request_helpers WHERE request_id = ? AND helper_id = ?",
               (request_id, request_context.user["id"]))
     return redirect(f"/requests/{request_id}")
+
+
+def accepted_help_for_user(user_id):
+    return run_query(
+        "SELECT help_requests.id, help_requests.title, help_requests.description, "
+        "help_requests.display_name, help_requests.skill, help_requests.status "
+        "FROM request_helpers JOIN help_requests ON help_requests.id = request_helpers.request_id "
+        "WHERE request_helpers.helper_id = ? AND request_helpers.decision = 'Accepted' "
+        "AND help_requests.status != 'Done' ORDER BY request_helpers.created_at DESC",
+        (user_id,),
+    )
+
+
+def my_help():
+    if not request_context.user:
+        return redirect("/login")
+    rows = accepted_help_for_user(request_context.user["id"])
+    if rows:
+        cards = []
+        for row in rows:
+            cards.append(
+                '<article class="my-help-card"><p class="eyebrow">YOU’RE HELPING</p>'
+                f'<h2><a href="/requests/{int(row["id"])}">{html.escape(row["title"])}</a></h2>'
+                f'<p>Requested by {html.escape(row["display_name"])} · {html.escape(row["skill"])}</p>'
+                f'<p class="my-help-preview">{html.escape(row["description"][:220])}</p>'
+                f'<a class="button" href="/requests/{int(row["id"])}">Open project</a></article>'
+            )
+        content = "".join(cards)
+    else:
+        content = '<p class="empty">No accepted projects yet. When someone accepts your offer, you’ll find it here.</p>'
+    return page("My help", "my_help.html", safe={"projects": content})
 
 
 def login_page(message=""):
@@ -555,6 +685,9 @@ def handle_request(method, path, form):
             return list_requests()
         if method == "POST":
             return create_request(form)
+    elif route == "/my-help":
+        if method == "GET":
+            return my_help()
     elif route == "/requests/new":
         if method == "GET":
             return new_request()
@@ -571,9 +704,12 @@ def handle_request(method, path, form):
             return confirm_delete(request_id)
         if method == "POST":
             return delete_request(request_id)
+    elif route == "/requests/<id>/applications":
+        if method == "POST":
+            return decide_application(request_id, form)
     elif route == "/requests/<id>/interest":
         if method == "POST":
-            return offer_help(request_id)
+            return offer_help(request_id, form)
     elif route == "/requests/<id>/interest/withdraw":
         if method == "POST":
             return withdraw_help(request_id)
