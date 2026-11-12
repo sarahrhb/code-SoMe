@@ -337,9 +337,7 @@ def show_request(request_id):
                 '<section class="helper-list"><p class="eyebrow">PEOPLE WHO WANT TO HELP</p>'
                 '<p>No one has offered yet.</p></section>'
             )
-    elif request_context.user and row["status"] != "Done":
-        user_rows = run_query("SELECT email FROM users WHERE id = ?", (request_context.user["id"],))
-        has_email = bool(user_rows and user_rows[0]["email"])
+    elif request_context.user:
         already_offered = bool(run_query(
             "SELECT 1 FROM request_helpers WHERE request_id = ? AND helper_id = ?",
             (row["id"], request_context.user["id"]),
@@ -350,14 +348,17 @@ def show_request(request_id):
                 f'<form method="post" action="/requests/{row["id"]}/interest/withdraw">{csrf_input()}'
                 '<button class="button button-quiet" type="submit">Withdraw my offer</button></form></div>'
             )
-        elif has_email:
-            help_action = (
-                '<div class="help-action"><p>Want to help? Choose below and we’ll share your CODE email with the person who posted this request.</p>'
-                f'<form method="post" action="/requests/{row["id"]}/interest">{csrf_input()}'
-                '<button class="button" type="submit">I want to help <span aria-hidden="true">↗</span></button></form></div>'
-            )
-        else:
-            help_action = '<p class="help-action">Your account has no email address saved, so you cannot offer to help.</p>'
+        elif row["status"] != "Done":
+            user_rows = run_query("SELECT email FROM users WHERE id = ?", (request_context.user["id"],))
+            has_email = bool(user_rows and user_rows[0]["email"])
+            if has_email:
+                help_action = (
+                    '<div class="help-action"><p>Want to help? Choose below and we’ll share your CODE email with the person who posted this request.</p>'
+                    f'<form method="post" action="/requests/{row["id"]}/interest">{csrf_input()}'
+                    '<button class="button" type="submit">I want to help <span aria-hidden="true">↗</span></button></form></div>'
+                )
+            else:
+                help_action = '<p class="help-action">Your account has no email address saved, so you cannot offer to help.</p>'
     elif not request_context.user and row["status"] != "Done":
         help_action = '<p class="help-action"><a href="/login">Sign in</a> to offer help. Your CODE email will be shared with the request owner.</p>'
     detail_class = "completed-request" if row["status"] == "Done" else "open-request"
@@ -529,6 +530,9 @@ def handle_request(method, path, form):
     if route == "/":
         if method == "GET":
             return home()
+    elif route == "/favicon.ico":
+        if method == "GET":
+            return static_file("favicon.svg")
     elif route == "/about":
         if method == "GET":
             return about()
