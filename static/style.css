@@ -714,6 +714,85 @@ main > h1 {
     color: var(--lime);
 }
 
+.notification-count {
+    display: inline-grid;
+    min-width: 20px;
+    height: 20px;
+    margin-left: 4px;
+    padding: 0 5px;
+    place-items: center;
+    border-radius: 999px;
+    background: var(--lime);
+    color: var(--night);
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.notifications-page h1 {
+    margin: 10px 0 12px;
+    font-size: clamp(2.6rem, 6vw, 5.5rem);
+    line-height: 1;
+}
+
+.notification-list {
+    max-width: 850px;
+    margin: 32px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.notification-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 20px;
+    border: 1px solid var(--line);
+    border-bottom: 0;
+    background: var(--panel);
+}
+
+.notification-item:last-child {
+    border-bottom: 1px solid var(--line);
+}
+
+.notification-item.unread {
+    border-left: 3px solid var(--lime);
+    background: var(--panel-raised);
+}
+
+.notification-item p {
+    margin: 0 0 7px;
+}
+
+.notification-item time {
+    color: var(--muted);
+    font-size: 0.76rem;
+}
+
+.notification-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.notification-actions a {
+    color: var(--lime);
+}
+
+.notification-actions form,
+.notifications-mark-all {
+    margin: 0;
+}
+
+.notifications-mark-all {
+    max-width: 850px;
+    margin-top: 18px;
+    text-align: right;
+}
+
 .my-help-page h1 {
     margin: 10px 0 12px;
     font-size: clamp(2.6rem, 6vw, 5.5rem);
@@ -991,6 +1070,16 @@ body > main > p {
     .receipt-tools {
         align-items: flex-start;
         flex-wrap: wrap;
+    }
+
+    .notification-item {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .notification-actions {
+        justify-content: flex-start;
     }
 }
 

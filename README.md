@@ -1,133 +1,49 @@
-# CODE Creator Board
+# SoMe Incubator Community Board
 
-A website where CODE students can ask each other for help creating content:
-editing, filming, design, copywriting or feedback.
+This project gives the SoMe Incubator community one shared place to ask for help with
+content work. It is meant to make requests easier to find and follow without adding more
+messages to Slack.
 
-## !! This is a part of the SoMe incubator project in CODE - Initiated by CAF i.V. !!
+Open the board at [some.code-alumni.de](https://some.code-alumni.de).
 
-The website is meant to be a place for these requests. Slack is so crowded, and adding more channels there will make students hate it even more. A request stays on this board with a visible status, so people can follow whether it is open, being worked on, or done.
+## Join the board
 
-## What you can do
+Create an account with your `@code.berlin` email address and choose a username and
+password. You can browse requests without signing in. Sign in when you want to post,
+edit, or offer help.
 
-- See all help requests
-- Search the list in the browser without reloading the page
-- Open one request
-- Create a new request
-- Edit a request
-- Delete a request
-- Keep the request status visible as open or done
-- Let a signed-in member apply to help on someone else's request
-- Let the request owner accept or decline applications and see applicants' CODE emails
-- Let applicants withdraw or apply again after a decline
-- Give completed requests a receipt look and a crumple animation; the request stays saved
+## Ask for help
 
-## Tech
+1. Choose **Post a request**.
+2. Give it a clear title and describe what you need. Include useful details such as the
+   kind of help, timing, and whether you are offering an exchange.
+3. Choose a topic and post it. Your username appears with the request.
+4. Review the people who apply. Their CODE email is shown to you because they agreed to
+   share it. Accept or decline each application.
+5. When the request is finished, change its status to **Done**.
 
-- Python 3, standard library (nothing to install with pip)
-- `http.server` (the web server and routes)
-- HTML templates in `templates/` with `$placeholders` that Python fills in (`string.Template`).
-  Everything users type is escaped with `html.escape` before it goes into a page.
-- SQLite (database, saved in `board.db` next to `app.py`)
-- A small browser-side JavaScript file filters the requests already on the page
-- Handwritten CSS
+You can edit or remove your own requests. Other members can read requests, so do not put
+private or sensitive information in them.
 
-This project uses SQLite. The module objective is to store and change data in a database; it does not require an ORM.
+## Offer help
 
-## How to start it
+1. Browse or search the open requests.
+2. Open a request you would like to help with.
+3. Apply and check the box agreeing to share your CODE email with the requester.
+4. Check **Updates** for the requester’s decision. Accepted projects also appear under
+   **My help**.
 
-You need Python 3.
+You can withdraw an application. If the requester accepts you and later marks the
+request done, you will see an update in **Updates**.
 
-```bash
-export SESSION_SECRET="$(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')"
-python3 app.py
-```
+## Updates
 
-Then open http://localhost:5001 in your browser.
-To create an account, use an `@code.berlin` email address. Each account has its own
-username and password.
+The board shows private in-app updates when someone applies to your request, when an
+application is accepted or declined, when a helper withdraws, or when a request you
+applied to is marked done. Open **Updates** in the menu to read them or mark them as read.
+The board does not send email notifications.
 
-## How the protection works
+## A note about older requests
 
-- Each account password is saved as a one-way hash, not as readable text.
-- Only email addresses ending in `@code.berlin` are accepted during signup. The email
-  address is stored for this check and is not shown publicly.
-- A signed-in account can edit or delete only requests it created.
-- Forms include a small check to help stop other websites from submitting changes.
-- A form must come from this same website.
-- User text is escaped before it is shown, and database values are sent separately
-  from SQL instructions.
-
-Everyone can read requests. Anyone who enters an `@code.berlin` address can create an
-account, then edit or delete only their own requests. The email address is checked for
-its domain, but the app does not confirm that the person owns that mailbox. The same-site
-check and form token are basic safeguards. For a public server, use HTTPS; the built-in
-Python server by itself does not provide HTTPS.
-
-## Current demo deployment
-
-The prototype is running over HTTPS at <https://some.code-alumni.de>. Caddy handles
-HTTPS and forwards website traffic to the Python app, which listens only inside the
-server. The app runs as a system service and saves `board.db` beside `app.py` so the
-data remains after a restart. The temporary address
-<https://code-some.167.233.155.151.sslip.io> also continues to work.
-
-On the server, a long random `SESSION_SECRET` and `COOKIE_SECURE=1` are stored in
-`/etc/codesome/board.env`. These values are private and are not in this repository.
-
-Existing requests from before accounts were added stay visible, but have no owner, so
-they cannot be edited or deleted through the website. New requests belong to the
-account that created them.
-
-## Data model: HelpRequest
-
-| Field | Meaning |
-| --- | --- |
-| id | number, made by the database |
-| title | short title of the request |
-| description | what you need, when, and if it is paid or a peer exchange |
-| display_name | account username shown on new requests |
-| skill | Editing, Filming, Design, Copywriting, Feedback or Other |
-| content_link | optional link, must start with http:// or https:// |
-| status | Open or Done |
-| owner_id | account that created the request; old requests have no owner |
-
-The `request_helpers` table links a request to applicants. Each application is pending,
-accepted, or declined. The applicant must check a box agreeing to share their CODE email
-with the requester before applying. The requester can accept or decline each pending
-application. Accepted helpers see an in-app notice and can find open projects on the `My
-help` page. Applicants can withdraw while pending or accepted, including after a request
-is done.
-
-## Routes
-
-| Method | Route | What it does |
-| --- | --- | --- |
-| GET | / | goes to /requests |
-| GET | /requests | list of all requests |
-| GET | /my-help | accepted projects for the signed-in helper |
-| GET | /requests/&lt;id&gt; | one request (dynamic route) |
-| GET | /about | about page |
-| GET/POST | /login | sign in |
-| GET/POST | /signup | create an account using a CODE email address |
-| POST | /logout | sign out |
-| GET | /requests/new | form to create a request |
-| POST | /requests | saves a new request |
-| GET | /requests/&lt;id&gt;/edit | edit form with the current values |
-| POST | /requests/&lt;id&gt;/edit | saves the changes (same id) |
-| GET | /requests/&lt;id&gt;/delete | asks "are you sure?" |
-| POST | /requests/&lt;id&gt;/delete | really deletes the request |
-| POST | /requests/&lt;id&gt;/interest | applies to help after email-sharing consent; the owner sees the applicant's saved email |
-| POST | /requests/&lt;id&gt;/applications | lets the owner accept or decline an application |
-| POST | /requests/&lt;id&gt;/interest/withdraw | withdraws an application or accepted offer |
-
-
-## Known limits
-
-- Everyone can read the requests; accounts only control who may change each request.
-- A helper's saved email is shown to the requester only after the helper checks the consent box and applies.
-- The acceptance notice is inside the website; the app does not send email or push notifications.
-- Old requests have no account owner and are read-only.
-- The browser-side feature only filters the list; it does not create or save records.
-- The temporary `sslip.io` address remains available as a fallback.
-- The email domain is checked, but the app does not send a confirmation email to prove
-  that a person owns that mailbox.
+Some requests were posted before accounts were added. They may still be visible, but
+there may be no active requester to review new applications.

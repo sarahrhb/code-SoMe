@@ -1,0 +1,12 @@
+<section class="notifications-page">
+    <p class="eyebrow">YOUR BOARD UPDATES</p>
+    <h1>Updates</h1>
+    <p class="hero-description">Applications, decisions, and changes to requests you’re involved in.</p>
+    $empty_state
+    $items
+    <form class="notifications-mark-all" method="post" action="/notifications/read">
+        $csrf_input
+        <input type="hidden" name="all" value="yes">
+        <button class="button button-quiet" type="submit">Mark all as read</button>
+    </form>
+</section>

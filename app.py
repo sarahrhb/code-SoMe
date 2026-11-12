@@ -98,6 +98,19 @@ def init_db():
     if "email_shared" not in helper_columns:
         # Existing applications did not record consent, so do not reveal their email.
         conn.execute("ALTER TABLE request_helpers ADD COLUMN email_shared INTEGER NOT NULL DEFAULT 0")
+    conn.execute("UPDATE request_helpers SET decision = 'Closed' WHERE decision = 'Pending' AND request_id IN (SELECT id FROM help_requests WHERE owner_id IS NULL)")
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            request_id INTEGER REFERENCES help_requests(id) ON DELETE CASCADE,
+            message TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            read_at TEXT
+        )
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS notifications_user_created ON notifications(user_id, created_at DESC)")
+    conn.execute("CREATE INDEX IF NOT EXISTS notifications_user_unread ON notifications(user_id, read_at)")
     conn.commit()
     conn.close()
 
@@ -168,6 +181,40 @@ def csrf_input():
     return f'<input type="hidden" name="csrf" value="{html.escape(request_context.csrf)}">'
 
 
+def add_notification(user_id, request_id, message):
+    if user_id:
+        run_query("INSERT INTO notifications (user_id, request_id, message) VALUES (?, ?, ?)",
+                  (user_id, request_id, message))
+
+
+def unread_notification_count(user_id):
+    rows = run_query("SELECT COUNT(*) AS total FROM notifications WHERE user_id = ? AND read_at IS NULL",
+                     (user_id,))
+    return rows[0]["total"]
+
+
+def render_notifications(rows):
+    items = []
+    for row in rows:
+        unread_class = " unread" if row["read_at"] is None else ""
+        message = html.escape(row["message"])
+        link = (f'<a href="/requests/{int(row["request_id"])}">Open request</a>'
+                if row["request_id"] is not None else "")
+        mark_read = ""
+        if row["read_at"] is None:
+            mark_read = (
+                f'<form method="post" action="/notifications/read">{csrf_input()}'
+                f'<input type="hidden" name="notification_id" value="{int(row["id"])}">'
+                '<button class="button button-quiet" type="submit">Mark read</button></form>'
+            )
+        items.append(
+            f'<li class="notification-item{unread_class}"><div><p>{message}</p>'
+            f'<time>{html.escape(row["created_at"])}</time></div>'
+            f'<div class="notification-actions">{link}{mark_read}</div></li>'
+        )
+    return '<ul class="notification-list">' + "".join(items) + "</ul>" if items else ""
+
+
 def account_page(title, template, **values):
     return page(title, template, safe={"csrf_input": csrf_input()}, **values)
 
@@ -185,7 +232,10 @@ def page(page_title, name, http_status=200, safe=None, **values):
     content = render(name, safe, **values)
     user = getattr(request_context, "user", None)
     if user:
+        unread_count = unread_notification_count(user["id"])
+        badge = f'<span class="notification-count">{unread_count}</span>' if unread_count else ""
         controls = (f'<span>Signed in as {html.escape(user["username"])}</span> '
+                    f'<a href="/notifications">Updates {badge}</a> '
                     '<a href="/my-help">My help</a> '
                     f'<form class="inline-form" method="post" action="/logout">{csrf_input()}'
                     '<button type="submit">Sign out</button></form>')
@@ -262,10 +312,13 @@ def about():
 def list_requests():
     rows = run_query("SELECT * FROM help_requests ORDER BY id DESC")
     notification = ""
-    if request_context.user and accepted_help_for_user(request_context.user["id"]):
-        notification = ('<aside class="accepted-notice" aria-live="polite">'
-                        '<strong>Good news — someone accepted your offer to help.</strong> '
-                        '<a href="/my-help">See the project you’re helping</a></aside>')
+    if request_context.user:
+        unread_count = unread_notification_count(request_context.user["id"])
+        if unread_count:
+            label = "update" if unread_count == 1 else "updates"
+            notification = ('<aside class="accepted-notice" aria-live="polite">'
+                            f'<strong>You have {unread_count} new {label}.</strong> '
+                            '<a href="/notifications">See your updates</a></aside>')
     if not rows:
         empty = '<p class="empty">No requests yet. Be the first to ask for help!</p>'
         return page("Requests", "list.html", safe={"cards": empty, "notification": notification},
@@ -388,38 +441,51 @@ def show_request(request_id):
         )
         decision = applications[0]["decision"] if applications else None
         if decision in ("Pending", "Accepted"):
-            message = ("Your application is waiting for a reply. The requester can see your CODE email."
-                       if decision == "Pending" else "Good news — the requester accepted your help! You can now help with this project. Visit <a href=\"/my-help\">My help</a> to find it again.")
+            if row["status"] == "Done":
+                message = "This request is marked done. It is no longer looking for help."
+            elif decision == "Pending":
+                message = "Your application is waiting for a reply. The requester can see your CODE email."
+            else:
+                message = "Good news — the requester accepted your help! Visit <a href=\"/my-help\">My help</a> to find this project."
             help_action = (
                 f'<div class="help-action"><p>{message}</p>'
                 f'<form method="post" action="/requests/{row["id"]}/interest/withdraw">{csrf_input()}'
                 '<button class="button button-quiet" type="submit">Withdraw application</button></form></div>'
             )
-        elif decision == "Declined":
-            if row["status"] != "Done":
+        elif decision in ("Declined", "Closed"):
+            if row["status"] != "Done" and row["owner_id"] is not None:
+                message = ("The requester declined this application. You can apply again if you’d still like to help."
+                           if decision == "Declined" else "This request was closed before your application was reviewed. It is open again, so you can apply if you’d still like to help.")
                 help_action = (
-                    '<div class="help-action"><p>The requester declined this application. You can apply again if you’d still like to help.</p>'
+                    f'<div class="help-action"><p>{message}</p>'
                     f'<form method="post" action="/requests/{row["id"]}/interest">{csrf_input()}'
                     '<label class="consent-check"><input type="checkbox" name="share_email" value="yes" required>'
                     '<span>I agree to share my CODE email with the requester so they can contact me about helping.</span></label>'
                     '<button class="button" type="submit">Apply again</button></form></div>'
                 )
             else:
-                help_action = '<p class="help-action">The requester declined this application.</p>'
+                message = ("The requester declined this application." if decision == "Declined"
+                           else "The request was marked done before your application was reviewed."
+                           if row["status"] == "Done" else
+                           "This older request has no active requester, so it cannot receive help applications.")
+                help_action = f'<p class="help-action">{message}</p>'
         elif row["status"] != "Done":
-            user_rows = run_query("SELECT email FROM users WHERE id = ?", (request_context.user["id"],))
-            has_email = bool(user_rows and user_rows[0]["email"])
-            if has_email:
-                help_action = (
-                    '<div class="help-action"><p>Apply to help? The requester will see your CODE email so they can decide.</p>'
-                    f'<form method="post" action="/requests/{row["id"]}/interest">{csrf_input()}'
-                    '<label class="consent-check"><input type="checkbox" name="share_email" value="yes" required>'
-                    '<span>I agree to share my CODE email with the requester so they can contact me about helping.</span></label>'
-                    '<button class="button" type="submit">Apply to help <span aria-hidden="true">↗</span></button></form></div>'
-                )
+            if row["owner_id"] is None:
+                help_action = '<p class="help-action">This older request has no active requester, so it cannot receive help applications.</p>'
             else:
-                help_action = '<p class="help-action">Your account has no email address saved, so you cannot apply to help.</p>'
-    elif not request_context.user and row["status"] != "Done":
+                user_rows = run_query("SELECT email FROM users WHERE id = ?", (request_context.user["id"],))
+                has_email = bool(user_rows and user_rows[0]["email"])
+                if has_email:
+                    help_action = (
+                        '<div class="help-action"><p>Apply to help? The requester will see your CODE email so they can decide.</p>'
+                        f'<form method="post" action="/requests/{row["id"]}/interest">{csrf_input()}'
+                        '<label class="consent-check"><input type="checkbox" name="share_email" value="yes" required>'
+                        '<span>I agree to share my CODE email with the requester so they can contact me about helping.</span></label>'
+                        '<button class="button" type="submit">Apply to help <span aria-hidden="true">↗</span></button></form></div>'
+                    )
+                else:
+                    help_action = '<p class="help-action">Your account has no email address saved, so you cannot apply to help.</p>'
+    elif not request_context.user and row["status"] != "Done" and row["owner_id"] is not None:
         help_action = '<p class="help-action"><a href="/login">Sign in</a> to apply to help. Your CODE email will be shared with the request owner for their decision.</p>'
     detail_class = "completed-request" if row["status"] == "Done" else "open-request"
     receipt_control = ""
@@ -458,12 +524,38 @@ def update_request(request_id, form):
     data, errors = check_form(form)
     if errors:
         return render_form(data, errors, request_id, status=400)
+    completing = row["status"] != "Done" and data["status"] == "Done"
+    reopening = row["status"] == "Done" and data["status"] == "Open"
+    involved_helpers = []
+    if completing:
+        involved_helpers = run_query(
+            "SELECT helper_id, decision FROM request_helpers WHERE request_id = ? AND decision IN ('Pending', 'Accepted')",
+            (request_id,),
+        )
+    accepted_helpers = []
+    if reopening:
+        accepted_helpers = run_query(
+            "SELECT helper_id FROM request_helpers WHERE request_id = ? AND decision = 'Accepted'",
+            (request_id,),
+        )
     run_query(
         "UPDATE help_requests SET title = ?, description = ?, skill = ?, "
         "content_link = ?, status = ? WHERE id = ? AND owner_id = ?",
         (data["title"], data["description"], data["skill"],
          data["content_link"], data["status"], request_id, request_context.user["id"]),
     )
+    if completing:
+        run_query("UPDATE request_helpers SET decision = 'Closed' WHERE request_id = ? AND decision = 'Pending'",
+                  (request_id,))
+        for helper in involved_helpers:
+            message = (f'The request “{data["title"]}” was marked done. Thanks for offering to help.'
+                       if helper["decision"] == "Accepted" else
+                       f'The request “{data["title"]}” was marked done before your application was reviewed.')
+            add_notification(helper["helper_id"], request_id, message)
+    if reopening:
+        for helper in accepted_helpers:
+            add_notification(helper["helper_id"], request_id,
+                             f'The request “{data["title"]}” is open again and the requester can use your help.')
     return redirect(f"/requests/{request_id}")
 
 
@@ -498,6 +590,8 @@ def offer_help(request_id, form):
         return redirect("/login")
     if row["owner_id"] == request_context.user["id"]:
         return error_page("This is your request", "You cannot offer help on your own request.", 400)
+    if row["owner_id"] is None:
+        return error_page("Requester unavailable", "This older request has no active requester, so it cannot receive help applications.", 400)
     if form.get("share_email") != "yes":
         return error_page("Please confirm email sharing", "Check the box to agree to share your CODE email with the requester before applying.", 400)
     if row["status"] == "Done":
@@ -509,15 +603,19 @@ def offer_help(request_id, form):
         "SELECT decision FROM request_helpers WHERE request_id = ? AND helper_id = ?",
         (request_id, request_context.user["id"]),
     )
-    if existing and existing[0]["decision"] == "Declined":
+    if existing and existing[0]["decision"] in ("Declined", "Closed"):
         run_query(
             "UPDATE request_helpers SET decision = 'Pending', email_shared = 1, created_at = CURRENT_TIMESTAMP "
-            "WHERE request_id = ? AND helper_id = ? AND decision = 'Declined'",
+            "WHERE request_id = ? AND helper_id = ? AND decision IN ('Declined', 'Closed')",
             (request_id, request_context.user["id"]),
         )
+        add_notification(row["owner_id"], request_id,
+                         f'{request_context.user["username"]} applied again to help with “{row["title"]}”.')
     elif not existing:
         run_query("INSERT INTO request_helpers (request_id, helper_id, decision, email_shared) VALUES (?, ?, 'Pending', 1)",
                   (request_id, request_context.user["id"]))
+        add_notification(row["owner_id"], request_id,
+                         f'{request_context.user["username"]} wants to help with “{row["title"]}”.')
     return redirect(f"/requests/{request_id}")
 
 
@@ -544,6 +642,8 @@ def decide_application(request_id, form):
         "UPDATE request_helpers SET decision = ? WHERE request_id = ? AND helper_id = ? AND decision = 'Pending'",
         (next_decision, request_id, int(helper_id)),
     )
+    add_notification(int(helper_id), request_id,
+                     f'Your application for “{row["title"]}” was {next_decision.lower()} by {row["display_name"]}.')
     return redirect(f"/requests/{request_id}")
 
 
@@ -553,8 +653,15 @@ def withdraw_help(request_id):
         return not_found()
     if not request_context.user:
         return redirect("/login")
+    applications = run_query(
+        "SELECT decision FROM request_helpers WHERE request_id = ? AND helper_id = ?",
+        (request_id, request_context.user["id"]),
+    )
     run_query("DELETE FROM request_helpers WHERE request_id = ? AND helper_id = ?",
               (request_id, request_context.user["id"]))
+    if applications and applications[0]["decision"] in ("Pending", "Accepted") and row["owner_id"]:
+        add_notification(row["owner_id"], request_id,
+                         f'{request_context.user["username"]} withdrew their offer to help with “{row["title"]}”.')
     return redirect(f"/requests/{request_id}")
 
 
@@ -587,6 +694,31 @@ def my_help():
     else:
         content = '<p class="empty">No accepted projects yet. When someone accepts your offer, you’ll find it here.</p>'
     return page("My help", "my_help.html", safe={"projects": content})
+
+
+def notifications_page():
+    if not request_context.user:
+        return redirect("/login")
+    rows = run_query("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT 100",
+                     (request_context.user["id"],))
+    items = render_notifications(rows)
+    empty = '<p class="empty">You don’t have any updates yet.</p>' if not rows else ""
+    return page("Updates", "notifications.html",
+                safe={"items": items, "empty_state": empty, "csrf_input": csrf_input()})
+
+
+def mark_notification_read(form):
+    if not request_context.user:
+        return redirect("/login")
+    if form.get("all") == "yes":
+        run_query("UPDATE notifications SET read_at = CURRENT_TIMESTAMP WHERE user_id = ? AND read_at IS NULL",
+                  (request_context.user["id"],))
+    else:
+        notification_id = form.get("notification_id", "")
+        if notification_id.isdigit():
+            run_query("UPDATE notifications SET read_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?",
+                      (int(notification_id), request_context.user["id"]))
+    return redirect("/notifications")
 
 
 def login_page(message=""):
@@ -688,6 +820,12 @@ def handle_request(method, path, form):
     elif route == "/my-help":
         if method == "GET":
             return my_help()
+    elif route == "/notifications":
+        if method == "GET":
+            return notifications_page()
+    elif route == "/notifications/read":
+        if method == "POST":
+            return mark_notification_read(form)
     elif route == "/requests/new":
         if method == "GET":
             return new_request()
