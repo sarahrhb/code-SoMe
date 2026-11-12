@@ -20,10 +20,12 @@ edit, or offer help.
 3. Choose a topic and post it. Your username appears with the request.
 4. Review the people who apply. Their CODE email is shown to you because they agreed to
    share it. Accept or decline each application.
-5. When the request is finished, change its status to **Done**.
+5. When the request is finished, change its status to **Done**. You can then choose **Throw this receipt in the bin** to hide it from the board. Its Updates stay available, and the saved request can still be opened from those updates.
 
-You can edit or remove your own requests. Other members can read requests, so do not put
-private or sensitive information in them.
+You can edit your own requests and delete them while they are open. After marking one
+done, use **Throw this receipt in the bin** to hide it from the board while keeping its
+request and updates saved. Other members can read requests, so do not put private or
+sensitive information in them.
 
 ## Offer help
 
