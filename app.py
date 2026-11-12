@@ -234,9 +234,7 @@ def page(page_title, name, http_status=200, safe=None, **values):
     if user:
         unread_count = unread_notification_count(user["id"])
         badge = f'<span class="notification-count">{unread_count}</span>' if unread_count else ""
-        controls = (f'<span>Signed in as {html.escape(user["username"])}</span> '
-                    f'<a href="/notifications">Updates {badge}</a> '
-                    '<a href="/my-help">My help</a> '
+        controls = (f'<a href="/notifications">Updates {badge}</a> '
                     f'<form class="inline-form" method="post" action="/logout">{csrf_input()}'
                     '<button type="submit">Sign out</button></form>')
     else:
@@ -322,7 +320,7 @@ def list_requests():
     if not rows:
         empty = '<p class="empty">No requests yet. Be the first to ask for help!</p>'
         return page("Requests", "list.html", safe={"cards": empty, "notification": notification},
-                    account_message=("Signed in as " + request_context.user["username"]
+                    account_message=("Post a request or offer to help."
                                      if request_context.user else "Everyone can read requests. Sign in to post your own."))
     cards = []
     for row in rows:
@@ -338,7 +336,7 @@ def list_requests():
                             card_class="done-card" if row["status"] == "Done" else ""))
     cards_html = '<ul class="cards">\n' + "\n".join(cards) + "\n</ul>"
     return page("Requests", "list.html", safe={"cards": cards_html, "notification": notification},
-                account_message=("Signed in as " + request_context.user["username"]
+                account_message=("Post a request or offer to help."
                                  if request_context.user else "Everyone can read requests. Sign in to post your own."))
 
 
@@ -446,7 +444,7 @@ def show_request(request_id):
             elif decision == "Pending":
                 message = "Your application is waiting for a reply. The requester can see your CODE email."
             else:
-                message = "Good news — the requester accepted your help! Visit <a href=\"/my-help\">My help</a> to find this project."
+                message = "Good news — the requester accepted your help! Find this project in <a href=\"/notifications#my-help\">Updates</a>."
             help_action = (
                 f'<div class="help-action"><p>{message}</p>'
                 f'<form method="post" action="/requests/{row["id"]}/interest/withdraw">{csrf_input()}'
@@ -679,7 +677,12 @@ def accepted_help_for_user(user_id):
 def my_help():
     if not request_context.user:
         return redirect("/login")
-    rows = accepted_help_for_user(request_context.user["id"])
+    content = accepted_help_markup(request_context.user["id"])
+    return page("My help", "my_help.html", safe={"projects": content})
+
+
+def accepted_help_markup(user_id):
+    rows = accepted_help_for_user(user_id)
     if rows:
         cards = []
         for row in rows:
@@ -693,7 +696,7 @@ def my_help():
         content = "".join(cards)
     else:
         content = '<p class="empty">No accepted projects yet. When someone accepts your offer, you’ll find it here.</p>'
-    return page("My help", "my_help.html", safe={"projects": content})
+    return content
 
 
 def notifications_page():
@@ -703,8 +706,17 @@ def notifications_page():
                      (request_context.user["id"],))
     items = render_notifications(rows)
     empty = '<p class="empty">You don’t have any updates yet.</p>' if not rows else ""
+    mark_all = ""
+    if unread_notification_count(request_context.user["id"]):
+        mark_all = (
+            f'<form class="notifications-mark-all" method="post" action="/notifications/read">{csrf_input()}'
+            '<input type="hidden" name="all" value="yes">'
+            '<button class="button button-quiet" type="submit">Mark all as read</button></form>'
+        )
+    projects = accepted_help_markup(request_context.user["id"])
     return page("Updates", "notifications.html",
-                safe={"items": items, "empty_state": empty, "csrf_input": csrf_input()})
+                safe={"items": items, "empty_state": empty, "mark_all": mark_all,
+                      "projects": projects, "csrf_input": csrf_input()})
 
 
 def mark_notification_read(form):
