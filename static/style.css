@@ -1,17 +1,11 @@
-/* CODE Creator Board - handwritten CSS, no framework */
-/* Mobile first. Breakpoints: 640px (tablet) and 1000px (desktop) */
-
-* {
-    box-sizing: border-box;
-}
+{ box-sizing: border-box;}
 
 body {
     margin: 0;
     font-family: Arial, Helvetica, sans-serif;
     line-height: 1.5;
     color: #222;
-    background-color: #f6f3ee;
-}
+    background-color: #f6f3ee; }
 
 a {
     color: #5a2ca0;
@@ -238,7 +232,7 @@ h1 {
     font-size: 1.2rem;
 }
 
-/* Breakpoint 1: tablets and bigger phones */
+/* tablets and bigger phones */
 @media (min-width: 640px) {
     .site-header {
         display: flex;
@@ -273,7 +267,6 @@ h1 {
     }
 }
 
-/* Breakpoint 2: laptops and desktops */
 @media (min-width: 1000px) {
     h1 {
         font-size: 2rem;
