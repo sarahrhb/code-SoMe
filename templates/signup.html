@@ -1,13 +1,13 @@
 <h1>Create an account</h1>
 <p>$message</p>
-<p>Ask the board organizer for the invitation code. Choose a password you do not use elsewhere.</p>
+<p>Use your CODE email address. Choose a password you do not use elsewhere.</p>
 <form class="form" method="post" action="/signup">
     $csrf_input
+    <label for="email">CODE email address</label>
+    <input id="email" name="email" type="email" autocomplete="email" placeholder="name@code.berlin" required>
     <label for="username">Username</label>
     <input id="username" name="username" autocomplete="username" minlength="3" maxlength="30" required>
     <label for="password">Password (at least 12 characters)</label>
     <input id="password" name="password" type="password" autocomplete="new-password" minlength="12" required>
-    <label for="invite_code">Invitation code</label>
-    <input id="invite_code" name="invite_code" type="password" required>
     <button class="button" type="submit">Create account</button>
 </form>
