@@ -58,26 +58,22 @@ def init_db():
         conn.executemany(
             "INSERT INTO help_requests (title, description, display_name, skill, content_link, status) "
             "VALUES (?, ?, ?, ?, ?, ?)",
-            examples,
-        )
+            examples,)
     conn.commit()
     conn.close()
 def get_request(request_id):
-    # return one request, or None if this id does not exist
     rows = run_query("SELECT * FROM help_requests WHERE id = ?", (request_id,))
     if rows:
         return rows[0]
     return None
 def check_form(form):
-    # read the form and return (data, errors)
     data = {
         "title": form.get("title", "").strip(),
         "description": form.get("description", "").strip(),
         "display_name": form.get("display_name", "").strip(),
         "skill": form.get("skill", ""),
         "content_link": form.get("content_link", "").strip(),
-        "status": form.get("status", "Open"),
-    }
+        "status": form.get("status", "Open"),}
     errors = []
     if not data["title"]:
         errors.append("Please write a title.")
