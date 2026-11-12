@@ -1,8 +1,3 @@
-# CODE Creator Board
-# A small website where students can ask for help (editing, filming, design...).
-# Data is saved in a SQLite database. Pages are HTML files in templates/
-# with $placeholders that Python fills in.
-
 import html
 import mimetypes
 import os
@@ -23,26 +18,22 @@ SKILLS = ["Editing", "Filming", "Design", "Copywriting", "Feedback", "Other"]
 STATUSES = ["Open", "In progress", "Done"]
 
 
-# database !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# database hereeee my girl
 
 def get_db():
-    # open a connection to the database
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row  # so I can use row["title"]
     return conn
 
 
 def run_query(sql, params=()):
-    # open the database, run one query save and close then return the rows
     conn = get_db()
     rows = conn.execute(sql, params).fetchall()
     conn.commit()
     conn.close()
     return rows
 
-
 def init_db():
-    # create the table and add some example requests if it is empty
     conn = get_db()
     conn.execute("""
         CREATE TABLE IF NOT EXISTS help_requests (
@@ -52,9 +43,7 @@ def init_db():
             display_name TEXT NOT NULL,
             skill TEXT NOT NULL,
             content_link TEXT,
-            status TEXT NOT NULL
-        )
-    """)
+            status TEXT NOT NULL)""")
     count = conn.execute("SELECT COUNT(*) FROM help_requests").fetchone()[0]
     if count == 0:
         examples = [
