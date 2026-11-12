@@ -1,15 +1,29 @@
-<section class="intro">
-    <h1>Community requests</h1>
-    <p>Creators from the CODE incubator ask for help with editing, filming, design and more.</p>
-    <p>$account_message</p>
-    <a class="button" href="/requests/new">+ Ask for help</a>
+<section class="board-hero">
+    <div class="hero-copy">
+        <p class="eyebrow">CODE / SOCIAL MEDIA INCUBATOR / 01</p>
+        <h1>Work moves<br>when we share it.</h1>
+        <p class="hero-description">A living index of people looking for a hand with the work.</p>
+    </div>
+    <div class="hero-side">
+        <p class="account-message"><span class="live-dot" aria-hidden="true"></span>$account_message</p>
+        <a class="button" href="/requests/new">Post a request <span aria-hidden="true">↗</span></a>
+        <p class="hero-note">A community board for making things together.</p>
+    </div>
 </section>
 
-<section class="filters" aria-label="Find a request">
-    <label for="request-search">Search requests</label>
-    <input type="search" id="request-search" placeholder="Try a title, skill, status, or name">
-    <p id="request-count" aria-live="polite"></p>
-    <p id="no-matches" hidden>No requests match your search.</p>
+<section class="board-tools" aria-label="Request index">
+    <div class="section-heading">
+        <p class="eyebrow">01 — THE REQUESTS</p>
+        <p class="section-caption">Open calls, shared skills, finished work.</p>
+    </div>
+    <div class="filters">
+        <label for="request-search">Search the board</label>
+        <input type="search" id="request-search" placeholder="Search requests">
+        <p id="request-count" aria-live="polite"></p>
+        <p id="no-matches" hidden>No requests match your search.</p>
+    </div>
 </section>
 
-$cards
+<section class="board-index" aria-label="Community requests">
+    $cards
+</section>

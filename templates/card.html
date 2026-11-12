@@ -1,6 +1,12 @@
-<li class="card" data-search="$title $skill $status $display_name">
-    <span class="tag">$skill</span>
-    <span class="status $status_class">$status</span>
-    <h2><a href="/requests/$id">$title</a></h2>
-    <p class="by">by $display_name</p>
+<li class="card $card_class" data-search="$title $skill $status $display_name">
+    <div class="card-number"><span>ENTRY</span><strong>$id</strong></div>
+    <div class="card-copy">
+        <div class="card-meta">
+            <span class="tag">$skill</span>
+            <span class="status $status_class">$status</span>
+        </div>
+        <h2><a href="/requests/$id">$title</a></h2>
+        <p class="by">By <strong>$display_name</strong></p>
+    </div>
+    <a class="card-arrow" href="/requests/$id" aria-label="Open request: $title">↗</a>
 </li>

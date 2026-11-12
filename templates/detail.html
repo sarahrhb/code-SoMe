@@ -1,14 +1,24 @@
-<p><a href="/requests">&larr; Back to all requests</a></p>
+<p class="back-link"><a href="/requests">&larr; Request index</a></p>
 
-<article class="detail">
-    <span class="tag">$skill</span>
-    <span class="status $status_class">$status</span>
+<article class="detail $detail_class" id="request-paper">
+    <div class="detail-heading">
+        <p class="eyebrow">REQUEST / $id</p>
+        <div class="card-meta">
+            <span class="tag">$skill</span>
+            <span class="status $status_class">$status</span>
+        </div>
+    </div>
     <h1>$title</h1>
-    <p class="by">Asked by $display_name &middot; Request #$id</p>
+    <p class="by">Posted by <strong>$display_name</strong></p>
 
-    <p class="description">$description</p>
+    <div class="detail-body">
+        <p class="eyebrow">THE REQUEST</p>
+        <p class="description">$description</p>
 
-    $link
+        $link
+    </div>
 
     $owner_actions
 </article>
+
+$receipt_control

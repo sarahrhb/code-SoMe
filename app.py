@@ -1,7 +1,4 @@
-# CODE Creator Board
-# A small website where students can ask for help (editing, filming, design...).
-# Data is saved in a SQLite database. Pages are HTML files in templates/
-# with $placeholders that Python fills in.
+"""Small help-request board backed by SQLite and HTML templates."""
 
 import base64
 import hashlib
@@ -13,15 +10,14 @@ import re
 import secrets
 import sqlite3
 import string
-import time
 import threading
+import time
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlsplit
 
 PORT = 5001
 
-# folders next to this file
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATABASE = os.path.join(HERE, "board.db")
 TEMPLATES = os.path.join(HERE, "templates")
@@ -36,27 +32,25 @@ PASSWORD_ITERATIONS = 310_000
 request_context = threading.local()
 
 
-# database !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 def get_db():
-    # open a connection to the database
     conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row  # so I can use row["title"]
+    conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
 
 def run_query(sql, params=()):
-    # open the database, run one query save and close then return the rows
     conn = get_db()
-    rows = conn.execute(sql, params).fetchall()
-    conn.commit()
-    conn.close()
-    return rows
+    try:
+        rows = conn.execute(sql, params).fetchall()
+        conn.commit()
+        return rows
+    finally:
+        conn.close()
 
 
 def init_db():
-    # create accounts and add an owner column to existing requests if needed
+    # Add new columns without replacing the existing request database.
     conn = get_db()
     conn.execute("""
         CREATE TABLE IF NOT EXISTS users (
@@ -85,32 +79,13 @@ def init_db():
     """)
     columns = {row["name"] for row in conn.execute("PRAGMA table_info(help_requests)")}
     if "owner_id" not in columns:
+        # Old requests have no owner and remain read-only.
         conn.execute("ALTER TABLE help_requests ADD COLUMN owner_id INTEGER REFERENCES users(id)")
-    count = conn.execute("SELECT COUNT(*) FROM help_requests").fetchone()[0]
-    if count == 0:
-        examples = [
-            ("Help edit a 30-second founder reel",
-             "I filmed a short reel and I can't get myaself to edit it! I'm cringing from myself. "
-             "Looking for someone to help me edit it. Peer exchange: I can help with copywriting in return.",
-             "Mila (demo)", "Editing", "https://example.com/my-reel", "Open"),
-            ("Need someone to film a product demo",
-             "Thursday afternoon at the CODE campus, about 1 hour. Phone camera is fine.",
-             "Jonas (demo)", "Filming", "", "In progress"),
-            ("Feedback on my new logo",
-             "I made three logo ideas. Which one is the best? Short feedback is enough.",
-             "Ava (demo)", "Feedback", "https://example.com/logos", "Done"),
-        ]
-        conn.executemany(
-            "INSERT INTO help_requests (title, description, display_name, skill, content_link, status) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            examples,
-        )
     conn.commit()
     conn.close()
 
 
 def get_request(request_id):
-    # return one request, or None if this id does not exist
     rows = run_query("SELECT * FROM help_requests WHERE id = ?", (request_id,))
     if rows:
         return rows[0]
@@ -118,7 +93,6 @@ def get_request(request_id):
 
 
 def check_form(form):
-    # read the form and return (data, errors)
     data = {
         "title": form.get("title", "").strip(),
         "description": form.get("description", "").strip(),
@@ -181,13 +155,8 @@ def account_page(title, template, **values):
     return page(title, template, safe={"csrf_input": csrf_input()}, **values)
 
 
-# here starts making pages!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
 def render(name, safe=None, **values):
-    # fill the $placeholders in templates/<name>.
-    # Every normal value is escaped, so text people type can't become HTML.
-    # "safe" is for pieces of HTML we built ourselves (they are already escaped).
+    # Escape user-provided values. Only HTML assembled here can be passed as safe.
     with open(os.path.join(TEMPLATES, name), encoding="utf-8") as file:
         template = string.Template(file.read())
     filled = {key: html.escape(str(value)) for key, value in values.items()}
@@ -196,7 +165,6 @@ def render(name, safe=None, **values):
 
 
 def page(page_title, name, http_status=200, safe=None, **values):
-    # put a template inside base.html and return a full response
     content = render(name, safe, **values)
     user = getattr(request_context, "user", None)
     if user:
@@ -210,7 +178,6 @@ def page(page_title, name, http_status=200, safe=None, **values):
 
 
 def redirect(url):
-    # tell the browser to go to another page
     return 302, {"Location": url}, b""
 
 
@@ -224,12 +191,10 @@ def not_found():
 
 
 def status_class(status):
-    # "In progress" -> "status-in-progress" (used by the CSS for colours)
     return "status-" + status.lower().replace(" ", "-")
 
 
 def make_options(choices, chosen):
-    # <option> tags for a <select>, with the chosen one selected
     options = []
     for choice in choices:
         selected = " selected" if choice == chosen else ""
@@ -239,7 +204,6 @@ def make_options(choices, chosen):
 
 
 def render_form(data, errors=None, request_id=None, status=200):
-    # show the form page; we are editing if we know which request it is
     editing = request_id is not None
     errors_html = ""
     if errors:
@@ -265,11 +229,9 @@ def render_form(data, errors=None, request_id=None, status=200):
     return page(title, "form.html", status, safe,
                 heading=heading, action=action, button_text=button_text,
                 cancel_url=cancel_url, title=data["title"],
-                description=data["description"], display_name=data.get("display_name", ""),
+                description=data["description"],
                 content_link=data["content_link"] or "")
 
-
-# the pages (one function per route)!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 def home():
     return redirect("/requests")
@@ -291,7 +253,8 @@ def list_requests():
         cards.append(render("card.html", id=row["id"], title=row["title"],
                             skill=row["skill"], status=row["status"],
                             status_class=status_class(row["status"]),
-                            display_name=row["display_name"]))
+                            display_name=row["display_name"],
+                            card_class="done-card" if row["status"] == "Done" else ""))
     cards_html = '<ul class="cards">\n' + "\n".join(cards) + "\n</ul>"
     return page("Requests", "list.html", safe={"cards": cards_html},
                 account_message=("Signed in as " + request_context.user["username"]
@@ -301,7 +264,7 @@ def list_requests():
 def new_request():
     if not request_context.user:
         return redirect("/login")
-    empty = {"title": "", "description": "", "display_name": "", "skill": "",
+    empty = {"title": "", "description": "", "skill": "",
              "content_link": "", "status": "Open"}
     return render_form(empty)
 
@@ -337,9 +300,20 @@ def show_request(request_id):
     if request_context.user and row["owner_id"] == request_context.user["id"]:
         owner_actions = (f'<div class="actions"><a class="button" href="/requests/{row["id"]}/edit">Edit</a> '
                          f'<a class="button button-danger" href="/requests/{row["id"]}/delete">Delete</a></div>')
-    return page(row["title"], "detail.html", safe={"link": link_html, "owner_actions": owner_actions},
+    detail_class = "completed-request" if row["status"] == "Done" else "open-request"
+    receipt_control = ""
+    if row["status"] == "Done":
+        receipt_control = (
+            '<div class="receipt-tools">'
+            '<button class="receipt-button" id="crumple-receipt" type="button">Crumple this receipt <span aria-hidden="true">↘</span></button>'
+            '<div class="archive-bin" aria-hidden="true"><span>FILED</span><span class="bin-mark">↓</span></div>'
+            '<p id="receipt-message" aria-live="polite" hidden>Filed away. This request is still in the board.</p>'
+            '</div>'
+        )
+    return page(row["title"], "detail.html",
+                safe={"link": link_html, "owner_actions": owner_actions, "receipt_control": receipt_control},
                 id=row["id"], title=row["title"], skill=row["skill"],
-                status=row["status"], status_class=status_class(row["status"]),
+                status=row["status"], status_class=status_class(row["status"]), detail_class=detail_class,
                 display_name=row["display_name"], description=row["description"])
 
 
@@ -371,7 +345,6 @@ def update_request(request_id, form):
 
 
 def confirm_delete(request_id):
-    # only shows a question, nothing is deleted here
     row = get_request(request_id)
     if row is None:
         return not_found()
@@ -439,7 +412,6 @@ def sign_in(form):
 
 
 def static_file(filename):
-    # send a file from static/ (only files that are really in that folder)
     if filename not in os.listdir(STATIC):
         return not_found()
     with open(os.path.join(STATIC, filename), "rb") as file:
@@ -448,11 +420,7 @@ def static_file(filename):
     return 200, {"Content-Type": content_type}, body
 
 
-# routing: which function answers which URL!!!!!!!!!!!!!!!!!!!!!!!!!
-
 def handle_request(method, path, form):
-    # The same URL can have a GET and a POST version.
-    # For /requests/<id>/... we read the id from the URL (a "dynamic route").
     parts = path.split("/")  # "/requests/5/edit" -> ["", "requests", "5", "edit"]
     request_id = None
     if len(parts) in (3, 4) and parts[1] == "requests" and parts[2].isdigit():
@@ -509,12 +477,10 @@ def handle_request(method, path, form):
             return static_file(parts[2])
     else:
         return not_found()
-    # the URL exists, but not with this method (for example POST /about)
     return 405, {"Content-Type": "text/plain; charset=utf-8"}, b"Method Not Allowed"
 
 
 def answer(method, path, form):
-    # like handle_request, but shows the database error page if SQLite fails
     try:
         return handle_request(method, path, form)
     except sqlite3.Error as error:
@@ -524,7 +490,6 @@ def answer(method, path, form):
 
 
 def same_site_form(headers):
-    # Browsers send Origin for forms. Referer is a fallback for older clients.
     host = headers.get("Host", "").lower()
     source = headers.get("Origin") or headers.get("Referer")
     if not host or not source:
@@ -533,11 +498,7 @@ def same_site_form(headers):
     return parsed.scheme in ("http", "https") and parsed.netloc.lower() == host
 
 
-# the web server!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 class Handler(BaseHTTPRequestHandler):
-    # http.server needs a class; it calls do_GET / do_POST for each request
-
     def do_GET(self):
         self.respond("GET")
 
@@ -570,13 +531,11 @@ class Handler(BaseHTTPRequestHandler):
         if method == "POST":
             length = int(self.headers.get("Content-Length", 0))
             body = self.rfile.read(length).decode("utf-8", errors="replace")
-            # parse_qs gives lists, like {"title": ["Hi"]}; we keep the first value
             form = {key: values[0] for key, values in parse_qs(body, keep_blank_values=True).items()}
             csrf_value = session["csrf"] if session else (anonymous_csrf.value if anonymous_csrf else "")
             if not csrf_value or not secrets.compare_digest(form.get("csrf", ""), csrf_value):
                 self.send_simple(403, "The form expired. Please reload the page and try again.")
                 return
-        # HEAD is a GET without the page content
         status, headers, content = answer("GET" if method == "HEAD" else method, path, form)
         self.send_response(status)
         for name, value in headers.items():

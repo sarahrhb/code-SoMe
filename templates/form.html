@@ -6,12 +6,10 @@ $errors
     $csrf_input
 
     <label for="title">Title</label>
-    <input type="text" id="title" name="title" maxlength="100" required
-           placeholder="Help edit a 30-second founder reel" value="$title">
+    <input type="text" id="title" name="title" maxlength="100" required value="$title">
 
     <label for="description">Description</label>
-    <textarea id="description" name="description" rows="6" required
-              placeholder="What do you need, by when, and is it paid or a peer exchange?">$description</textarea>
+    <textarea id="description" name="description" rows="6" required>$description</textarea>
 
     <p>Your account name will appear on this request.</p>
 
@@ -32,7 +30,7 @@ $errors
     </div>
 
     <label for="content_link">Content link (optional)</label>
-    <input type="url" id="content_link" name="content_link" placeholder="https://..." value="$content_link">
+    <input type="url" id="content_link" name="content_link" value="$content_link">
 
     <div class="actions">
         <button class="button" type="submit">$button_text</button>
