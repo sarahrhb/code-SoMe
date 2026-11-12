@@ -250,10 +250,15 @@ def list_requests():
                                      if request_context.user else "Everyone can read requests. Sign in to post your own."))
     cards = []
     for row in rows:
+        description_preview = row["description"].strip()
+        if len(description_preview) > 180:
+            description_preview = description_preview[:177].rstrip() + "..."
         cards.append(render("card.html", id=row["id"], title=row["title"],
                             skill=row["skill"], status=row["status"],
                             status_class=status_class(row["status"]),
                             display_name=row["display_name"],
+                            description_preview=description_preview,
+                            author_initial=row["display_name"][:1].upper(),
                             card_class="done-card" if row["status"] == "Done" else ""))
     cards_html = '<ul class="cards">\n' + "\n".join(cards) + "\n</ul>"
     return page("Requests", "list.html", safe={"cards": cards_html},
