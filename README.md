@@ -56,10 +56,3 @@ Then open http://localhost:5001 in your browser.
 | POST | /requests/&lt;id&gt;/edit | saves the changes (same id) |
 | GET | /requests/&lt;id&gt;/delete | asks "are you sure?" |
 | POST | /requests/&lt;id&gt;/delete | really deletes the request |
-
-
-## Known limits
-
-- No login. Anyone can edit or delete any request.
-- No protection against fake form posts from other websites (CSRF).
-- Not deployed.
