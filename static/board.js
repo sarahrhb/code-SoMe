@@ -24,30 +24,3 @@
     search.addEventListener("input", updateResults);
     updateResults();
 })();
-
-(function () {
-    const button = document.querySelector("#crumple-receipt");
-    const paper = document.querySelector("#request-paper");
-    const message = document.querySelector("#receipt-message");
-    if (!button || !paper || !message) return;
-
-    button.addEventListener("click", function () {
-        if (paper.hidden) {
-            paper.hidden = false;
-            paper.classList.remove("is-crumpling");
-            message.hidden = true;
-            button.innerHTML = 'Crumple this receipt <span aria-hidden="true">↘</span>';
-            return;
-        }
-
-        paper.classList.add("is-crumpling");
-        button.disabled = true;
-        window.setTimeout(function () {
-            paper.hidden = true;
-            paper.classList.remove("is-crumpling");
-            message.hidden = false;
-            button.innerHTML = 'Bring receipt back <span aria-hidden="true">↖</span>';
-            button.disabled = false;
-        }, window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 780);
-    });
-})();

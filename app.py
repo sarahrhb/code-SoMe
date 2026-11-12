@@ -81,6 +81,9 @@ def init_db():
     if "owner_id" not in columns:
         # Old requests have no owner and remain read-only.
         conn.execute("ALTER TABLE help_requests ADD COLUMN owner_id INTEGER REFERENCES users(id)")
+    if "archived_at" not in columns:
+        # Completed requests can leave the board while remaining available to Updates.
+        conn.execute("ALTER TABLE help_requests ADD COLUMN archived_at TEXT")
     conn.execute("UPDATE help_requests SET status = 'Open' WHERE status = 'In progress'")
     conn.execute("""
         CREATE TABLE IF NOT EXISTS request_helpers (
@@ -308,7 +311,7 @@ def about():
 
 
 def list_requests():
-    rows = run_query("SELECT * FROM help_requests ORDER BY id DESC")
+    rows = run_query("SELECT * FROM help_requests WHERE archived_at IS NULL ORDER BY id DESC")
     notification = ""
     if request_context.user:
         unread_count = unread_notification_count(request_context.user["id"])
@@ -378,9 +381,14 @@ def show_request(request_id):
     owner_actions = ""
     help_action = ""
     helpers_html = ""
-    if request_context.user and row["owner_id"] == request_context.user["id"]:
+    archived = bool(row["archived_at"])
+    if archived:
+        help_action = '<p class="archived-note">This request was put in the bin. It is no longer on the request board.</p>'
+    elif request_context.user and row["owner_id"] == request_context.user["id"]:
+        delete_action = (f'<a class="button button-danger" href="/requests/{row["id"]}/delete">Delete</a>'
+                         if row["status"] != "Done" else "")
         owner_actions = (f'<div class="actions"><a class="button" href="/requests/{row["id"]}/edit">Edit</a> '
-                         f'<a class="button button-danger" href="/requests/{row["id"]}/delete">Delete</a></div>')
+                         f'{delete_action}</div>')
         helpers = run_query(
             "SELECT users.id, users.username, users.email, request_helpers.email_shared, request_helpers.decision, request_helpers.created_at "
             "FROM request_helpers JOIN users ON users.id = request_helpers.helper_id "
@@ -487,12 +495,11 @@ def show_request(request_id):
         help_action = '<p class="help-action"><a href="/login">Sign in</a> to apply to help. Your CODE email will be shared with the request owner for their decision.</p>'
     detail_class = "completed-request" if row["status"] == "Done" else "open-request"
     receipt_control = ""
-    if row["status"] == "Done":
+    if row["status"] == "Done" and not archived and request_context.user and row["owner_id"] == request_context.user["id"]:
         receipt_control = (
-            '<div class="receipt-tools">'
-            '<button class="receipt-button" id="crumple-receipt" type="button">Crumple this receipt <span aria-hidden="true">↘</span></button>'
-            '<div class="archive-bin" aria-hidden="true"><span>FILED</span><span class="bin-mark">↓</span></div>'
-            '<p id="receipt-message" aria-live="polite" hidden>Filed away. This request is still in the board.</p>'
+            '<div class="receipt-tools"><p>Finished with this request?</p>'
+            f'<form method="post" action="/requests/{row["id"]}/archive">{csrf_input()}'
+            '<button class="receipt-button" type="submit">Throw this receipt in the bin</button></form>'
             '</div>'
         )
     return page(row["title"], "detail.html",
@@ -504,12 +511,31 @@ def show_request(request_id):
                 display_name=row["display_name"], description=row["description"])
 
 
+def archive_request(request_id):
+    row = get_request(request_id)
+    if row is None:
+        return not_found()
+    if not request_context.user or row["owner_id"] != request_context.user["id"]:
+        return error_page("Not your request", "You can only put your own requests in the bin.", 403)
+    if row["status"] != "Done":
+        return error_page("Request still open", "Mark this request done before putting it in the bin.", 400)
+    if row["archived_at"]:
+        return redirect("/requests")
+    run_query("UPDATE help_requests SET archived_at = CURRENT_TIMESTAMP WHERE id = ? AND owner_id = ? AND archived_at IS NULL",
+              (request_id, request_context.user["id"]))
+    add_notification(request_context.user["id"], request_id,
+                     f'You put “{row["title"]}” in the bin. It is hidden from the request board.')
+    return redirect("/requests")
+
+
 def edit_request(request_id):
     row = get_request(request_id)
     if row is None:
         return not_found()
     if not request_context.user or row["owner_id"] != request_context.user["id"]:
         return error_page("Not your request", "You can only edit requests created by your account.", 403)
+    if row["archived_at"]:
+        return error_page("Request is in the bin", "This request has been removed from the board and can’t be edited.", 400)
     return render_form(row, request_id=request_id)
 
 
@@ -519,6 +545,8 @@ def update_request(request_id, form):
         return not_found()
     if not request_context.user or row["owner_id"] != request_context.user["id"]:
         return error_page("Not your request", "You can only edit requests created by your account.", 403)
+    if row["archived_at"]:
+        return error_page("Request is in the bin", "This request has been removed from the board and can’t be edited.", 400)
     data, errors = check_form(form)
     if errors:
         return render_form(data, errors, request_id, status=400)
@@ -563,6 +591,8 @@ def confirm_delete(request_id):
         return not_found()
     if not request_context.user or row["owner_id"] != request_context.user["id"]:
         return error_page("Not your request", "You can only delete requests created by your account.", 403)
+    if row["status"] == "Done" or row["archived_at"]:
+        return error_page("Request is done", "Use the receipt action to remove a completed request from the board and keep its updates.", 400)
     return page("Delete request", "delete.html", safe={"csrf_input": csrf_input()}, id=row["id"], title=row["title"])
 
 
@@ -572,6 +602,8 @@ def delete_request(request_id):
         return not_found()
     if not request_context.user or row["owner_id"] != request_context.user["id"]:
         return error_page("Not your request", "You can only delete requests created by your account.", 403)
+    if row["status"] == "Done" or row["archived_at"]:
+        return error_page("Request is done", "Use the receipt action to remove a completed request from the board and keep its updates.", 400)
     conn = get_db()
     conn.execute("DELETE FROM request_helpers WHERE request_id = ?", (request_id,))
     conn.execute("DELETE FROM help_requests WHERE id = ? AND owner_id = ?", (request_id, request_context.user["id"]))
@@ -849,6 +881,9 @@ def handle_request(method, path, form):
             return edit_request(request_id)
         if method == "POST":
             return update_request(request_id, form)
+    elif route == "/requests/<id>/archive":
+        if method == "POST":
+            return archive_request(request_id)
     elif route == "/requests/<id>/delete":
         if method == "GET":
             return confirm_delete(request_id)
