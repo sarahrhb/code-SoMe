@@ -16,6 +16,7 @@ The website is meant to be a place for these requests. Slack is so crowded, and 
 - Edit a request
 - Delete a request
 - Keep the request status visible for follow-through
+- Give completed requests a receipt look and a crumple animation; the request stays saved
 
 ## Tech
 
@@ -34,7 +35,7 @@ This project uses SQLite. The module objective is to store and change data in a 
 You need Python 3.
 
 ```bash
-export SESSION_SECRET='choose-a-long-random-secret'
+export SESSION_SECRET="$(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')"
 python3 app.py
 ```
 
@@ -81,7 +82,7 @@ account that created them.
 | id | number, made by the database |
 | title | short title of the request |
 | description | what you need, when, and if it is paid or a peer exchange |
-| display_name | account username shown on the request (demo requests may have fictional names) |
+| display_name | account username shown on new requests |
 | skill | Editing, Filming, Design, Copywriting, Feedback or Other |
 | content_link | optional link, must start with http:// or https:// |
 | status | Open, In progress or Done |
