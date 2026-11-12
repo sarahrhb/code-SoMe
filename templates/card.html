@@ -1,12 +1,14 @@
-<li class="card $card_class" data-search="$title $skill $status $display_name">
-    <div class="card-number"><span>ENTRY</span><strong>$id</strong></div>
-    <div class="card-copy">
-        <div class="card-meta">
-            <span class="tag">$skill</span>
-            <span class="status $status_class">$status</span>
-        </div>
-        <h2><a href="/requests/$id">$title</a></h2>
-        <p class="by">By <strong>$display_name</strong></p>
+<li class="card testimonial-card $card_class" data-search="$title $description_preview $skill $status $display_name">
+    <div class="card-meta">
+        <span class="tag">$skill</span>
+        <span class="status $status_class">$status</span>
     </div>
-    <a class="card-arrow" href="/requests/$id" aria-label="Open request: $title">↗</a>
+    <span class="quote-mark" aria-hidden="true">“</span>
+    <h2><a href="/requests/$id">$title</a></h2>
+    <p class="request-quote">$description_preview</p>
+    <div class="card-byline">
+        <span class="author-mark" aria-hidden="true">$author_initial</span>
+        <p class="by">By <strong>$display_name</strong><small>Request $id</small></p>
+        <a class="card-arrow" href="/requests/$id" aria-label="Open request: $title">↗</a>
+    </div>
 </li>
