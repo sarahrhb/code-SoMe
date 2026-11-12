@@ -30,8 +30,8 @@ private or sensitive information in them.
 1. Browse or search the open requests.
 2. Open a request you would like to help with.
 3. Apply and check the box agreeing to share your CODE email with the requester.
-4. Check **Updates** for the requester’s decision. Accepted projects also appear under
-   **My help**.
+4. Check **Updates** for the requester’s decision. Accepted projects appear in the
+   **My help** section on that same page.
 
 You can withdraw an application. If the requester accepts you and later marks the
 request done, you will see an update in **Updates**.
