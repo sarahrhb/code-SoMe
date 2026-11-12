@@ -29,7 +29,6 @@ STATIC = os.path.join(HERE, "static")
 
 SKILLS = ["Editing", "Filming", "Design", "Copywriting", "Feedback", "Other"]
 STATUSES = ["Open", "In progress", "Done"]
-REGISTRATION_CODE = os.environ.get("BOARD_REGISTRATION_CODE", "")
 SESSION_SECRET = os.environ.get("SESSION_SECRET", "") or secrets.token_urlsafe(48)
 COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "0") == "1"
 SESSION_SECONDS = 7 * 24 * 60 * 60
@@ -63,10 +62,15 @@ def init_db():
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT NOT NULL COLLATE NOCASE UNIQUE,
+            email TEXT UNIQUE COLLATE NOCASE,
             salt TEXT NOT NULL,
             password_hash TEXT NOT NULL
         )
     """)
+    user_columns = {row["name"] for row in conn.execute("PRAGMA table_info(users)")}
+    if "email" not in user_columns:
+        conn.execute("ALTER TABLE users ADD COLUMN email TEXT")
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique ON users(email COLLATE NOCASE)")
     conn.execute("""
         CREATE TABLE IF NOT EXISTS help_requests (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -391,18 +395,15 @@ def login_page(message=""):
 
 
 def signup_page(message=""):
-    if not REGISTRATION_CODE:
-        return error_page("Sign up unavailable", "The board owner has not enabled account creation yet.", 503)
     return account_page("Create account", "signup.html", message=message)
 
 
 def create_account(form):
     username = form.get("username", "").strip()
+    email = form.get("email", "").strip().lower()
     password = form.get("password", "")
-    if not REGISTRATION_CODE:
-        return error_page("Sign up unavailable", "The board owner has not enabled account creation yet.", 503)
-    if not secrets.compare_digest(form.get("invite_code", ""), REGISTRATION_CODE):
-        return signup_page("That invitation code is not correct.")
+    if not re.fullmatch(r"[a-z0-9._%+-]+@code\.berlin", email):
+        return signup_page("Use an email address ending in @code.berlin.")
     if not re.fullmatch(r"[A-Za-z0-9_]{3,30}", username):
         return signup_page("Choose a username with 3–30 letters, numbers, or underscores.")
     if len(password) < 12:
@@ -410,14 +411,14 @@ def create_account(form):
     salt, hashed = password_record(password)
     conn = get_db()
     try:
-        cursor = conn.execute("INSERT INTO users (username, salt, password_hash) VALUES (?, ?, ?)",
-                              (username, salt, hashed))
+        cursor = conn.execute("INSERT INTO users (username, email, salt, password_hash) VALUES (?, ?, ?, ?)",
+                              (username, email, salt, hashed))
         conn.commit()
         request_context.user = {"id": cursor.lastrowid, "username": username}
         request_context.new_session = True
         return redirect("/requests")
     except sqlite3.IntegrityError:
-        return signup_page("That username is already taken.")
+        return signup_page("That username or email address is already in use.")
     finally:
         conn.close()
 
