@@ -1,12 +1,11 @@
 # CODE Creator Board
 
-A small website where CODE students can ask each other for help creating content:
+A website where CODE students can ask each other for help creating content:
 editing, filming, design, copywriting or feedback.
 
-The website is meant to be a focused place for these requests. Slack already has a lot
-of activity, and adding more requests there can make them harder to find. A request
-stays on this board with a visible status, so people can follow whether it is open,
-being worked on, or done.
+## !! This is a part of the SoMe incubator project in CODE - Initiated by CAF i.V. !!
+
+The website is meant to be a place for these requests. Slack is so crowded, and adding more channels there will make students hate it even more. A request stays on this board with a visible status, so people can follow whether it is open, being worked on, or done.
 
 ## What you can do
 
@@ -15,62 +14,67 @@ being worked on, or done.
 - Open one request
 - Create a new request
 - Edit a request
-- Delete a request (you have to confirm first)
+- Delete a request
 - Keep the request status visible for follow-through
 
 ## Tech
 
-- Python 3, standard library only (nothing to install with pip)
+- Python 3, standard library (nothing to install with pip)
 - `http.server` (the web server and routes)
 - HTML templates in `templates/` with `$placeholders` that Python fills in (`string.Template`).
   Everything users type is escaped with `html.escape` before it goes into a page.
 - SQLite (database, saved in `board.db` next to `app.py`)
 - A small browser-side JavaScript file filters the requests already on the page
-- Handwritten CSS, no framework; one shared password protects changes
+- Handwritten CSS
 
-There is no ORM. An ORM is a tool that lets code work with database rows as Python
-objects. This project uses SQLite directly so the database steps stay visible and
-simple. The module objective is to store and change data in a database; it does not
-require an ORM specifically.
+This project uses SQLite. The module objective is to store and change data in a database; it does not require an ORM.
 
 ## How to start it
 
 You need Python 3.
 
 ```bash
-export BOARD_WRITE_PASSWORD='choose-a-private-password'
+export BOARD_REGISTRATION_CODE='choose-a-private-invitation-code'
+export SESSION_SECRET='choose-a-long-random-secret'
 python3 app.py
 ```
 
 Then open http://localhost:5001 in your browser.
-When you post, edit, or delete a request, the browser asks for the shared password.
-Use `community` as the username. If `BOARD_WRITE_PASSWORD` is not set, changes are
-disabled. Do not put the password in this repository.
+Create an account using the invitation code. Each account has its own username and
+password. Without `BOARD_REGISTRATION_CODE`, new account creation is disabled.
 
 ## How the protection works
 
-- The shared password is checked before a form can change the database.
-- A form must come from this same website. This is a simple check against another
-  website secretly submitting a form for you.
+- Each account password is saved as a one-way hash, not as readable text.
+- A signed-in account can edit or delete only requests it created.
+- Forms include a small check to help stop other websites from submitting changes.
+- A form must come from this same website.
 - User text is escaped before it is shown, and database values are sent separately
   from SQL instructions.
 
-This is a beginner-level protection, not a complete account system. Everyone who
-can edit uses the same password, and everyone can read the requests. The same-site
-check is a basic safeguard, not a replacement for a full CSRF token. For a public
-server, use HTTPS; the built-in Python server by itself does not provide HTTPS.
+Everyone can read requests. Each person signs in with their own account, and can edit
+or delete only their own requests. The invitation code controls who can create an
+account; it is not a personal password. The same-site check and form token are basic
+safeguards. For a public server, use HTTPS; the built-in Python server by itself does
+not provide HTTPS.
 
-## Keeping the data
+## Current demo deployment
 
-The database file is `board.db` next to `app.py`. It is ignored by Git so personal
-request data is not pushed with the code. Back up this file before moving the project
-or updating a server. For a simple manual backup, stop the app and copy `board.db` to
-a safe location. To restore it, stop the app and put the backup beside `app.py` with
-the name `board.db`.
+The prototype is running over HTTPS at <https://code-some.167.233.155.151.sslip.io>.
+This temporary hostname points to the Hetzner server. Caddy handles HTTPS and forwards
+website traffic to the Python app, which listens only inside the server. The app runs
+as a system service and saves `board.db` beside `app.py` so the data remains after a
+restart.
 
-The project is not deployed yet. For a public deployment, keep the Python app behind
-an HTTPS reverse proxy and use persistent server storage for `board.db`; do not expose
-the built-in Python server directly to the internet.
+The planned address is <https://SoMe.code-alumni.de>, after the CODE tech team approves
+it and points that name to the server. Until then, the temporary HTTPS address above
+continues to work. On the server, set `BOARD_REGISTRATION_CODE`, a long random
+`SESSION_SECRET`, and `COOKIE_SECURE=1` in `/etc/codesome/board.env`. These values are
+private and are not in this repository.
+
+Existing requests from before accounts were added stay visible, but have no owner, so
+they cannot be edited or deleted through the website. New requests belong to the
+account that created them.
 
 ## Data model: HelpRequest
 
@@ -79,10 +83,11 @@ the built-in Python server directly to the internet.
 | id | number, made by the database |
 | title | short title of the request |
 | description | what you need, when, and if it is paid or a peer exchange |
-| display_name | your name (fictional in the demo) |
+| display_name | account username shown on the request (demo requests may have fictional names) |
 | skill | Editing, Filming, Design, Copywriting, Feedback or Other |
 | content_link | optional link, must start with http:// or https:// |
 | status | Open, In progress or Done |
+| owner_id | account that created the request; old requests have no owner |
 
 ## Routes
 
@@ -92,6 +97,9 @@ the built-in Python server directly to the internet.
 | GET | /requests | list of all requests |
 | GET | /requests/&lt;id&gt; | one request (dynamic route) |
 | GET | /about | about page |
+| GET/POST | /login | sign in |
+| GET/POST | /signup | create an account using the invitation code |
+| POST | /logout | sign out |
 | GET | /requests/new | form to create a request |
 | POST | /requests | saves a new request |
 | GET | /requests/&lt;id&gt;/edit | edit form with the current values |
@@ -102,7 +110,7 @@ the built-in Python server directly to the internet.
 
 ## Known limits
 
-- One shared password rather than separate user accounts or permissions.
+- Everyone can read the requests; accounts only control who may change each request.
+- Old requests have no account owner and are read-only.
 - The browser-side feature only filters the list; it does not create or save records.
-- The protection is intentionally small and still needs review before public use.
-- Not deployed.
+- The demo uses a temporary `sslip.io` hostname until the planned domain is approved and configured.

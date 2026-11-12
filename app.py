@@ -4,12 +4,18 @@
 # with $placeholders that Python fills in.
 
 import base64
+import hashlib
+import hmac
 import html
 import mimetypes
 import os
+import re
 import secrets
 import sqlite3
 import string
+import time
+import threading
+from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlsplit
 
@@ -23,6 +29,12 @@ STATIC = os.path.join(HERE, "static")
 
 SKILLS = ["Editing", "Filming", "Design", "Copywriting", "Feedback", "Other"]
 STATUSES = ["Open", "In progress", "Done"]
+REGISTRATION_CODE = os.environ.get("BOARD_REGISTRATION_CODE", "")
+SESSION_SECRET = os.environ.get("SESSION_SECRET", "") or secrets.token_urlsafe(48)
+COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "0") == "1"
+SESSION_SECONDS = 7 * 24 * 60 * 60
+PASSWORD_ITERATIONS = 310_000
+request_context = threading.local()
 
 
 # database !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -31,6 +43,7 @@ def get_db():
     # open a connection to the database
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row  # so I can use row["title"]
+    conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
 
@@ -44,8 +57,16 @@ def run_query(sql, params=()):
 
 
 def init_db():
-    # create the table and add some example requests if it is empty
+    # create accounts and add an owner column to existing requests if needed
     conn = get_db()
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL COLLATE NOCASE UNIQUE,
+            salt TEXT NOT NULL,
+            password_hash TEXT NOT NULL
+        )
+    """)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS help_requests (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -54,9 +75,13 @@ def init_db():
             display_name TEXT NOT NULL,
             skill TEXT NOT NULL,
             content_link TEXT,
-            status TEXT NOT NULL
+            status TEXT NOT NULL,
+            owner_id INTEGER REFERENCES users(id)
         )
     """)
+    columns = {row["name"] for row in conn.execute("PRAGMA table_info(help_requests)")}
+    if "owner_id" not in columns:
+        conn.execute("ALTER TABLE help_requests ADD COLUMN owner_id INTEGER REFERENCES users(id)")
     count = conn.execute("SELECT COUNT(*) FROM help_requests").fetchone()[0]
     if count == 0:
         examples = [
@@ -93,7 +118,6 @@ def check_form(form):
     data = {
         "title": form.get("title", "").strip(),
         "description": form.get("description", "").strip(),
-        "display_name": form.get("display_name", "").strip(),
         "skill": form.get("skill", ""),
         "content_link": form.get("content_link", "").strip(),
         "status": form.get("status", "Open"),
@@ -105,8 +129,6 @@ def check_form(form):
         errors.append("The title can be at most 100 characters.")
     if not data["description"]:
         errors.append("Please write a description.")
-    if not data["display_name"]:
-        errors.append("Please write a display name.")
     if data["skill"] not in SKILLS:
         errors.append("Please choose a skill from the list.")
     if data["status"] not in STATUSES:
@@ -114,6 +136,45 @@ def check_form(form):
     if data["content_link"] and not data["content_link"].startswith(("http://", "https://")):
         errors.append("The link must start with http:// or https://")
     return data, errors
+
+
+def password_record(password, salt=None):
+    salt = salt or secrets.token_hex(16)
+    hashed = hashlib.pbkdf2_hmac("sha256", password.encode(), bytes.fromhex(salt), PASSWORD_ITERATIONS).hex()
+    return salt, hashed
+
+
+def signed_session(user_id, expires, csrf):
+    payload = f"{user_id}:{expires}:{csrf}"
+    signature = hmac.new(SESSION_SECRET.encode(), payload.encode(), hashlib.sha256).hexdigest()
+    return base64.urlsafe_b64encode(f"{payload}:{signature}".encode()).decode().rstrip("=")
+
+
+def read_session(cookie_header):
+    cookie = SimpleCookie()
+    try:
+        cookie.load(cookie_header or "")
+        value = cookie.get("board_session")
+        if not value:
+            return None
+        decoded = base64.urlsafe_b64decode(value.value + "=" * (-len(value.value) % 4)).decode()
+        user_id, expires, csrf, signature = decoded.split(":", 3)
+        payload = f"{user_id}:{expires}:{csrf}"
+        expected = hmac.new(SESSION_SECRET.encode(), payload.encode(), hashlib.sha256).hexdigest()
+        if int(expires) < int(time.time()) or not hmac.compare_digest(signature, expected):
+            return None
+        rows = run_query("SELECT id, username FROM users WHERE id = ?", (int(user_id),))
+        return {"id": int(user_id), "username": rows[0]["username"], "csrf": csrf} if rows else None
+    except (ValueError, TypeError, UnicodeDecodeError):
+        return None
+
+
+def csrf_input():
+    return f'<input type="hidden" name="csrf" value="{html.escape(request_context.csrf)}">'
+
+
+def account_page(title, template, **values):
+    return page(title, template, safe={"csrf_input": csrf_input()}, **values)
 
 
 # here starts making pages!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -133,7 +194,14 @@ def render(name, safe=None, **values):
 def page(page_title, name, http_status=200, safe=None, **values):
     # put a template inside base.html and return a full response
     content = render(name, safe, **values)
-    body = render("base.html", safe={"content": content}, page_title=page_title)
+    user = getattr(request_context, "user", None)
+    if user:
+        controls = (f'<span>Signed in as {html.escape(user["username"])}</span> '
+                    f'<form class="inline-form" method="post" action="/logout">{csrf_input()}'
+                    '<button type="submit">Sign out</button></form>')
+    else:
+        controls = '<a href="/login">Sign in</a> <a href="/signup">Create account</a>'
+    body = render("base.html", safe={"content": content, "account_controls": controls}, page_title=page_title)
     return http_status, {"Content-Type": "text/html; charset=utf-8"}, body.encode("utf-8")
 
 
@@ -186,13 +254,14 @@ def render_form(data, errors=None, request_id=None, status=200):
         cancel_url = "/requests"
     safe = {
         "errors": errors_html,
+        "csrf_input": csrf_input(),
         "skill_options": make_options(SKILLS, data["skill"]),
         "status_options": make_options(STATUSES, data["status"]),
     }
     return page(title, "form.html", status, safe,
                 heading=heading, action=action, button_text=button_text,
                 cancel_url=cancel_url, title=data["title"],
-                description=data["description"], display_name=data["display_name"],
+                description=data["description"], display_name=data.get("display_name", ""),
                 content_link=data["content_link"] or "")
 
 
@@ -210,7 +279,9 @@ def list_requests():
     rows = run_query("SELECT * FROM help_requests ORDER BY id DESC")
     if not rows:
         empty = '<p class="empty">No requests yet. Be the first to ask for help!</p>'
-        return page("Requests", "list.html", safe={"cards": empty})
+        return page("Requests", "list.html", safe={"cards": empty},
+                    account_message=("Signed in as " + request_context.user["username"]
+                                     if request_context.user else "Everyone can read requests. Sign in to post your own."))
     cards = []
     for row in rows:
         cards.append(render("card.html", id=row["id"], title=row["title"],
@@ -218,25 +289,31 @@ def list_requests():
                             status_class=status_class(row["status"]),
                             display_name=row["display_name"]))
     cards_html = '<ul class="cards">\n' + "\n".join(cards) + "\n</ul>"
-    return page("Requests", "list.html", safe={"cards": cards_html})
+    return page("Requests", "list.html", safe={"cards": cards_html},
+                account_message=("Signed in as " + request_context.user["username"]
+                                 if request_context.user else "Everyone can read requests. Sign in to post your own."))
 
 
 def new_request():
+    if not request_context.user:
+        return redirect("/login")
     empty = {"title": "", "description": "", "display_name": "", "skill": "",
              "content_link": "", "status": "Open"}
     return render_form(empty)
 
 
 def create_request(form):
+    if not request_context.user:
+        return redirect("/login")
     data, errors = check_form(form)
     if errors:
         return render_form(data, errors, status=400)
     conn = get_db()
     cursor = conn.execute(
-        "INSERT INTO help_requests (title, description, display_name, skill, content_link, status) "
-        "VALUES (?, ?, ?, ?, ?, ?)",
-        (data["title"], data["description"], data["display_name"], data["skill"],
-         data["content_link"], data["status"]),
+        "INSERT INTO help_requests (title, description, display_name, skill, content_link, status, owner_id) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (data["title"], data["description"], request_context.user["username"], data["skill"],
+         data["content_link"], data["status"], request_context.user["id"]),
     )
     conn.commit()
     new_id = cursor.lastrowid
@@ -252,7 +329,11 @@ def show_request(request_id):
     if row["content_link"]:
         link = html.escape(row["content_link"])
         link_html = f'<p>Content link: <a href="{link}" rel="noopener nofollow">{link}</a></p>'
-    return page(row["title"], "detail.html", safe={"link": link_html},
+    owner_actions = ""
+    if request_context.user and row["owner_id"] == request_context.user["id"]:
+        owner_actions = (f'<div class="actions"><a class="button" href="/requests/{row["id"]}/edit">Edit</a> '
+                         f'<a class="button button-danger" href="/requests/{row["id"]}/delete">Delete</a></div>')
+    return page(row["title"], "detail.html", safe={"link": link_html, "owner_actions": owner_actions},
                 id=row["id"], title=row["title"], skill=row["skill"],
                 status=row["status"], status_class=status_class(row["status"]),
                 display_name=row["display_name"], description=row["description"])
@@ -262,20 +343,25 @@ def edit_request(request_id):
     row = get_request(request_id)
     if row is None:
         return not_found()
+    if not request_context.user or row["owner_id"] != request_context.user["id"]:
+        return error_page("Not your request", "You can only edit requests created by your account.", 403)
     return render_form(row, request_id=request_id)
 
 
 def update_request(request_id, form):
-    if get_request(request_id) is None:
+    row = get_request(request_id)
+    if row is None:
         return not_found()
+    if not request_context.user or row["owner_id"] != request_context.user["id"]:
+        return error_page("Not your request", "You can only edit requests created by your account.", 403)
     data, errors = check_form(form)
     if errors:
         return render_form(data, errors, request_id, status=400)
     run_query(
-        "UPDATE help_requests SET title = ?, description = ?, display_name = ?, skill = ?, "
-        "content_link = ?, status = ? WHERE id = ?",
-        (data["title"], data["description"], data["display_name"], data["skill"],
-         data["content_link"], data["status"], request_id),
+        "UPDATE help_requests SET title = ?, description = ?, skill = ?, "
+        "content_link = ?, status = ? WHERE id = ? AND owner_id = ?",
+        (data["title"], data["description"], data["skill"],
+         data["content_link"], data["status"], request_id, request_context.user["id"]),
     )
     return redirect(f"/requests/{request_id}")
 
@@ -285,13 +371,69 @@ def confirm_delete(request_id):
     row = get_request(request_id)
     if row is None:
         return not_found()
-    return page("Delete request", "delete.html", id=row["id"], title=row["title"])
+    if not request_context.user or row["owner_id"] != request_context.user["id"]:
+        return error_page("Not your request", "You can only delete requests created by your account.", 403)
+    return page("Delete request", "delete.html", safe={"csrf_input": csrf_input()}, id=row["id"], title=row["title"])
 
 
 def delete_request(request_id):
-    if get_request(request_id) is None:
+    row = get_request(request_id)
+    if row is None:
         return not_found()
-    run_query("DELETE FROM help_requests WHERE id = ?", (request_id,))
+    if not request_context.user or row["owner_id"] != request_context.user["id"]:
+        return error_page("Not your request", "You can only delete requests created by your account.", 403)
+    run_query("DELETE FROM help_requests WHERE id = ? AND owner_id = ?", (request_id, request_context.user["id"]))
+    return redirect("/requests")
+
+
+def login_page(message=""):
+    return account_page("Sign in", "login.html", message=message)
+
+
+def signup_page(message=""):
+    if not REGISTRATION_CODE:
+        return error_page("Sign up unavailable", "The board owner has not enabled account creation yet.", 503)
+    return account_page("Create account", "signup.html", message=message)
+
+
+def create_account(form):
+    username = form.get("username", "").strip()
+    password = form.get("password", "")
+    if not REGISTRATION_CODE:
+        return error_page("Sign up unavailable", "The board owner has not enabled account creation yet.", 503)
+    if not secrets.compare_digest(form.get("invite_code", ""), REGISTRATION_CODE):
+        return signup_page("That invitation code is not correct.")
+    if not re.fullmatch(r"[A-Za-z0-9_]{3,30}", username):
+        return signup_page("Choose a username with 3–30 letters, numbers, or underscores.")
+    if len(password) < 12:
+        return signup_page("Choose a password with at least 12 characters.")
+    salt, hashed = password_record(password)
+    conn = get_db()
+    try:
+        cursor = conn.execute("INSERT INTO users (username, salt, password_hash) VALUES (?, ?, ?)",
+                              (username, salt, hashed))
+        conn.commit()
+        request_context.user = {"id": cursor.lastrowid, "username": username}
+        request_context.new_session = True
+        return redirect("/requests")
+    except sqlite3.IntegrityError:
+        return signup_page("That username is already taken.")
+    finally:
+        conn.close()
+
+
+def sign_in(form):
+    username = form.get("username", "").strip()
+    password = form.get("password", "")
+    rows = run_query("SELECT * FROM users WHERE username = ? COLLATE NOCASE", (username,))
+    if not rows:
+        return login_page("Username or password is incorrect.")
+    user = rows[0]
+    _, candidate = password_record(password, user["salt"])
+    if not hmac.compare_digest(candidate, user["password_hash"]):
+        return login_page("Username or password is incorrect.")
+    request_context.user = {"id": user["id"], "username": user["username"]}
+    request_context.new_session = True
     return redirect("/requests")
 
 
@@ -326,6 +468,20 @@ def handle_request(method, path, form):
     elif route == "/about":
         if method == "GET":
             return about()
+    elif route == "/login":
+        if method == "GET":
+            return login_page()
+        if method == "POST":
+            return sign_in(form)
+    elif route == "/signup":
+        if method == "GET":
+            return signup_page()
+        if method == "POST":
+            return create_account(form)
+    elif route == "/logout":
+        if method == "POST":
+            request_context.logout = True
+            return redirect("/requests")
     elif route == "/requests":
         if method == "GET":
             return list_requests()
@@ -376,24 +532,6 @@ def same_site_form(headers):
     return parsed.scheme in ("http", "https") and parsed.netloc.lower() == host
 
 
-def has_write_password(headers):
-    # One shared password keeps this demo simple. It is not a user account system.
-    expected_password = os.environ.get("BOARD_WRITE_PASSWORD", "")
-    if not expected_password:
-        return None  # editing is disabled until the owner sets a password
-
-    authorization = headers.get("Authorization", "")
-    try:
-        scheme, encoded = authorization.split(" ", 1)
-        if scheme.lower() != "basic":
-            return False
-        username, password = base64.b64decode(encoded, validate=True).decode("utf-8").split(":", 1)
-    except (ValueError, UnicodeDecodeError):
-        return False
-
-    return username == "community" and secrets.compare_digest(password, expected_password)
-
-
 # the web server!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 class Handler(BaseHTTPRequestHandler):
@@ -410,20 +548,21 @@ class Handler(BaseHTTPRequestHandler):
 
     def respond(self, method):
         path = unquote(urlsplit(self.path).path)  # drop "?..." and decode %20 etc.
+        session = read_session(self.headers.get("Cookie", ""))
+        csrf_cookie = SimpleCookie()
+        try:
+            csrf_cookie.load(self.headers.get("Cookie", ""))
+        except Exception:
+            pass
+        anonymous_csrf = csrf_cookie.get("board_csrf")
+        request_context.user = session
+        request_context.csrf = session["csrf"] if session else (anonymous_csrf.value if anonymous_csrf else secrets.token_urlsafe(24))
+        request_context.new_session = False
+        request_context.logout = False
+        request_context.set_csrf = not session and not anonymous_csrf
         if method == "POST":
             if not same_site_form(self.headers):
                 self.send_simple(403, "This form must be submitted from the board website.")
-                return
-            password_ok = has_write_password(self.headers)
-            if password_ok is None:
-                self.send_simple(503, "Board editing is disabled until BOARD_WRITE_PASSWORD is set.")
-                return
-            if not password_ok:
-                self.send_simple(
-                    401,
-                    "Enter the shared board password. The username is community.",
-                    {"WWW-Authenticate": 'Basic realm="CODE Creator Board", charset="UTF-8"'},
-                )
                 return
 
         form = {}
@@ -432,11 +571,25 @@ class Handler(BaseHTTPRequestHandler):
             body = self.rfile.read(length).decode("utf-8", errors="replace")
             # parse_qs gives lists, like {"title": ["Hi"]}; we keep the first value
             form = {key: values[0] for key, values in parse_qs(body, keep_blank_values=True).items()}
+            csrf_value = session["csrf"] if session else (anonymous_csrf.value if anonymous_csrf else "")
+            if not csrf_value or not secrets.compare_digest(form.get("csrf", ""), csrf_value):
+                self.send_simple(403, "The form expired. Please reload the page and try again.")
+                return
         # HEAD is a GET without the page content
         status, headers, content = answer("GET" if method == "HEAD" else method, path, form)
         self.send_response(status)
         for name, value in headers.items():
             self.send_header(name, value)
+        if request_context.new_session:
+            new_csrf = secrets.token_urlsafe(24)
+            token = signed_session(request_context.user["id"], int(time.time()) + SESSION_SECONDS, new_csrf)
+            self.send_header("Set-Cookie", f"board_session={token}; Path=/; HttpOnly; SameSite=Lax; Max-Age={SESSION_SECONDS}" + ("; Secure" if COOKIE_SECURE else ""))
+            self.send_header("Set-Cookie", f"board_csrf={new_csrf}; Path=/; SameSite=Lax; Max-Age={SESSION_SECONDS}" + ("; Secure" if COOKIE_SECURE else ""))
+        elif request_context.logout:
+            self.send_header("Set-Cookie", "board_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0" + ("; Secure" if COOKIE_SECURE else ""))
+            self.send_header("Set-Cookie", "board_csrf=; Path=/; SameSite=Lax; Max-Age=0" + ("; Secure" if COOKIE_SECURE else ""))
+        elif request_context.set_csrf:
+            self.send_header("Set-Cookie", f"board_csrf={request_context.csrf}; Path=/; SameSite=Lax" + ("; Secure" if COOKIE_SECURE else ""))
         self.send_header("Content-Length", str(len(content)))
         self.end_headers()
         if method != "HEAD":
