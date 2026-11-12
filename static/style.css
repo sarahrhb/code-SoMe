@@ -59,12 +59,12 @@ select:focus-visible {
 }
 
 .logo-mark {
-    width: 42px;
+    width: 39px;
     height: 42px;
     display: block;
     flex: 0 0 auto;
     object-fit: contain;
-    aspect-ratio: 1 / 1;
+    aspect-ratio: 39 / 42;
 }
 
 .logo-copy {
