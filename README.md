@@ -1,58 +1,34 @@
-# CODE Creator Board
+# CODE SoMe incubator (scocial media incubator)
 
 A small website where CODE students can ask each other for help creating content:
 editing, filming, design, copywriting or feedback.
 
-## What you can do
+Visit the board at [some.code-alumni.de](https://some.code-alumni.de).
 
-- See all help requests
-- Open one request
-- Create a new request
-- Edit a request
-- Delete a request (you have to confirm first)
 
-## Tech
+## Join
 
-- Python 3, standard library only (nothing to install with pip)
-- `http.server` (the web server and routes)
-- HTML templates in `templates/` with `$placeholders` that Python fills in (`string.Template`).
-  Everything users type is escaped with `html.escape` before it goes into a page.
-- SQLite (database, one file called `board.db`)
-- Handwritten CSS, no framework
+Create an account using your CODE email address. Choose a username and password (remember your password cuz there is no password restore yet). You can still see requests without signing in BUT you’ll need an account to post or apply to help.
 
-## How to start it
+## Ask for help
 
-You need Python 3.
+1. Choose **Post a request**.
+2. Write a short title and describe the help you need.
+3. Choose a topic and post your request.
+4. Review the applications you receive. When someone applies, you can accept or decline. Their CODE email is shown to you so you can contact them about helping.
+5. When the request is finished, mark it **Done**. You can then choose **Throw this receipt in the bin** to hide it from the request board. It stays saved and its updates remain available.
 
-```bash
-python3 app.py
-```
+You can edit your own requests. You can delete a request while it’s open. Requests can be read by everyone, so please don’t include private information.
 
-Then open http://localhost:5001 in your browser.
+## Offer help
 
-## Data model: HelpRequest
+1. Browse or search the requests.
+2. Open one you’d like to help with.
+3. Choose **Apply to help** and check the box agreeing to share your CODE email with the requester.
+4. Check **Updates** for the requester’s decision. If they accept, you’ll find the project under **My help**.
 
-| Field | Meaning |
-| --- | --- |
-| id | number, made by the database |
-| title | short title of the request |
-| description | what you need, when, and if it is paid or a peer exchange |
-| display_name | your name (fictional in the demo) |
-| skill | Editing, Filming, Design, Copywriting, Feedback or Other |
-| content_link | optional link, must start with http:// or https:// |
-| status | Open, In progress or Done |
+You can withdraw your application from the request page.
 
-## Routes
+## Updates
 
-| Method | Route | What it does |
-| --- | --- | --- |
-| GET | / | goes to /requests |
-| GET | /requests | list of all requests |
-| GET | /requests/&lt;id&gt; | one request (dynamic route) |
-| GET | /about | about page |
-| GET | /requests/new | form to create a request |
-| POST | /requests | saves a new request |
-| GET | /requests/&lt;id&gt;/edit | edit form with the current values |
-| POST | /requests/&lt;id&gt;/edit | saves the changes (same id) |
-| GET | /requests/&lt;id&gt;/delete | asks "are you sure?" |
-| POST | /requests/&lt;id&gt;/delete | really deletes the request |
+**Updates** shows your notifications and updates about requests you applied to. Accepted projects appear there under **My help**. The webpage does not send email notification!!!
