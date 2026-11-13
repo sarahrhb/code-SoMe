@@ -1,9 +1,9 @@
 <h1>Sign in</h1>
-<p>$message</p>
+<p class="form-feedback" role="alert">$message</p>
 <form class="form" method="post" action="/login">
     $csrf_input
     <label for="username">Username</label>
-    <input id="username" name="username" autocomplete="username" required>
+    <input id="username" name="username" autocomplete="username" value="$username" required>
     <label for="password">Password</label>
     <input id="password" name="password" type="password" autocomplete="current-password" required>
     <button class="button" type="submit">Sign in</button>
