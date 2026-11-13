@@ -42,19 +42,6 @@ def init_db():
             content_link TEXT,
             status TEXT NOT NULL)""")
     count = conn.execute("SELECT COUNT(*) FROM help_requests").fetchone()[0]
-    if count == 0:
-        examples = [
-            ("Help edit a 30-second founder reel",
-             "I filmed a short reel and I can't get myaself to edit it! I'm cringing from myself. "
-             "Looking for someone to help me edit it. Peer exchange: I can help with copywriting in return.",
-             "Mila (demo)", "Editing", "https://example.com/my-reel", "Open"),
-            ("Need someone to film a product demo",
-             "Thursday afternoon at the CODE campus, about 1 hour. Phone camera is fine.",
-             "Jonas (demo)", "Filming", "", "In progress"),
-            ("Feedback on my new logo",
-             "I made three logo ideas. Which one is the best? Short feedback is enough.",
-             "Ava (demo)", "Feedback", "https://example.com/logos", "Done"),
-        ]
         conn.executemany(
             "INSERT INTO help_requests (title, description, display_name, skill, content_link, status) "
             "VALUES (?, ?, ?, ?, ?, ?)",
@@ -105,7 +92,7 @@ def render(name, safe=None, **values):
 
 def page(page_title, name, http_status=200, safe=None, **values): 
     content = render(name, safe, **values)
-    body = render("base.html", safe={"content": content}, page_title=page_title) # put a template inside base.html
+    body = render("base.html", safe={"content": content}, page_title=page_title)
     return http_status, {"Content-Type": "text/html; charset=utf-8"}, body.encode("utf-8")
 
 
@@ -122,7 +109,7 @@ def not_found():
                       "This page or request does not exist (maybe it was deleted).", 404)
 
 
-def status_class(status): # "In progress" -> "status-in-progress" etc etc
+def status_class(status): # "Open" -> "Done" etc etc
     return "status-" + status.lower().replace(" ", "-")
 
 
@@ -187,6 +174,7 @@ def new_request():
     empty = {"title": "", "description": "", "display_name": "", "skill": "",
              "content_link": "", "status": "Open"}
     return render_form(empty)
+#create request
 def create_request(form):
     data, errors = check_form(form)
     if errors:
@@ -202,7 +190,7 @@ def create_request(form):
     new_id = cursor.lastrowid
     conn.close()
     return redirect(f"/requests/{new_id}")
-
+#find request
 def show_request(request_id):
     row = get_request(request_id)
     if row is None:
@@ -215,15 +203,12 @@ def show_request(request_id):
                 id=row["id"], title=row["title"], skill=row["skill"],
                 status=row["status"], status_class=status_class(row["status"]),
                 display_name=row["display_name"], description=row["description"])
-
-
+#edit request
 def edit_request(request_id):
     row = get_request(request_id)
     if row is None:
         return not_found()
     return render_form(row, request_id=request_id)
-
-
 def update_request(request_id, form):
     if get_request(request_id) is None:
         return not_found()
@@ -234,18 +219,13 @@ def update_request(request_id, form):
         "UPDATE help_requests SET title = ?, description = ?, display_name = ?, skill = ?, "
         "content_link = ?, status = ? WHERE id = ?",
         (data["title"], data["description"], data["display_name"], data["skill"],
-         data["content_link"], data["status"], request_id),
-    )
+         data["content_link"], data["status"], request_id))
     return redirect(f"/requests/{request_id}")
-
-
 def confirm_delete(request_id):# shows a question
     row = get_request(request_id)
     if row is None:
         return not_found()
     return page("Delete request", "delete.html", id=row["id"], title=row["title"])
-
-
 def delete_request(request_id):
     if get_request(request_id) is None:
         return not_found()
