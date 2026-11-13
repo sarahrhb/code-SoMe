@@ -477,9 +477,30 @@ main > h1 {
 }
 
 .card-arrow {
+    min-height: 42px;
+    padding: 0 11px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid currentColor;
     color: var(--lime);
-    font-size: 1.25rem;
+    font-size: 0.67rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
     text-decoration: none;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.card-arrow span:last-child {
+    font-size: 1.35rem;
+    font-weight: 400;
+    line-height: 1;
+}
+
+.card-arrow:hover {
+    background: var(--lime);
+    color: var(--night);
 }
 
 .quote-mark {
@@ -1136,6 +1157,12 @@ body > main > p {
     .card {
         min-height: 270px;
         padding: 20px;
+    }
+
+    .card-arrow {
+        min-height: 44px;
+        padding: 0 10px;
+        font-size: 0.63rem;
     }
 
     .card:nth-child(n) {

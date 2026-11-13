@@ -53,9 +53,13 @@
         author.append(makeElement("small", "", "Community request"));
         byline.append(author);
 
-        const arrow = makeElement("a", "card-arrow", "↗");
+        const arrow = makeElement("a", "card-arrow");
         arrow.href = "/requests/" + id;
         arrow.setAttribute("aria-label", "Open request: " + title);
+        arrow.append(makeElement("span", "", "Open request"));
+        const arrowMark = makeElement("span", "", "→");
+        arrowMark.setAttribute("aria-hidden", "true");
+        arrow.append(arrowMark);
         byline.append(arrow);
         card.append(byline);
         return card;
