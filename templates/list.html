@@ -1,45 +1,45 @@
 <section class="dashboard-head" aria-labelledby="board-title">
-    <div class="dashboard-title">
+      <div class="dashboard-title">
         <p class="hero-description">Ask help for editing, filming, design, copywriting, or feedback, or find a something you can help with.</p>
-    </div>
-    <div class="dashboard-tools">
-        <p class="account-message">$account_message</p>
+  </div>
+  <div class="dashboard-tools">
+          <p class="account-message">$account_message</p>
         <a class="button" href="/requests/new">Ask for help <span aria-hidden="true">↗</span></a>
-    </div>
+  </div>
 </section>
 
  $notification
 
 <section class="board-index" aria-label="Community requests">
-    <div class="board-controls">
+      <div class="board-controls">
         <p class="index-label"><span>Community requests</span></p>
-        <div class="filters" id="request-filters" hidden>
-            <div class="filter-fields">
-                <div class="filter-control">
+    <div class="filters" id="request-filters" hidden>
+          <div class="filter-fields">
+                  <div class="filter-control">
                     <label for="request-search">Search the requests</label>
-                    <input type="search" id="request-search" placeholder="A topic, name, or kind of help">
-                </div>
-                <div class="filter-control">
+          <input type="search" id="request-search" placeholder="A topic, name, or kind of help">
+              </div>
+                  <div class="filter-control">
                     <label for="request-skill">Kind of help</label>
-                    <select id="request-skill">
-                        <option value="">All kinds</option>
-                        <option>Editing</option><option>Filming</option><option>Design</option>
+          <select id="request-skill">
+                      <option value="">All kinds</option>
+                          <option>Editing</option><option>Filming</option><option>Design</option>
                         <option>Copywriting</option><option>Feedback</option><option>Other</option>
-                    </select>
-                </div>
-                <div class="filter-control">
+          </select>
+              </div>
+                  <div class="filter-control">
                     <label for="request-status">Status</label>
-                    <select id="request-status">
-                        <option value="">Open and done</option>
-                        <option>Open</option><option>Done</option>
+          <select id="request-status">
+                      <option value="">Open and done</option>
+                          <option>Open</option><option>Done</option>
                     </select>
-                </div>
-            </div>
-            <p id="request-count" aria-live="polite"></p>
-            <p id="request-feed-message" role="status" aria-live="polite" hidden></p>
         </div>
+          </div>
+              <p id="request-count" aria-live="polite"></p>
+            <p id="request-feed-message" role="status" aria-live="polite" hidden></p>
     </div>
-    <div id="request-results">$cards</div>
+  </div>
+      <div id="request-results">$cards</div>
     <p class="board-empty" id="board-empty" hidden>No requests have been posted yet. <a href="/requests/new">Ask for help</a> to start the board.</p>
-    <p class="no-matches" id="no-matches" hidden>No requests match your filters. <button type="button" id="clear-request-filters">Clear filters</button></p>
+  <p class="no-matches" id="no-matches" hidden>No requests match your filters. <button type="button" id="clear-request-filters">Clear filters</button></p>
 </section>

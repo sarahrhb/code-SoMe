@@ -268,8 +268,8 @@ def status_class(status):
 def make_options(choices, chosen):
     options = []
     for choice in choices:
-        selected = " selected" if choice == chosen else ""
         value = html.escape(choice)
+        selected = " selected" if choice == chosen else ""
         options.append(f'<option value="{value}"{selected}>{value}</option>')
     return "\n".join(options)
 
@@ -332,33 +332,31 @@ def list_requests():
             notification = ('<aside class="accepted-notice" aria-live="polite">'
                             f'<strong>You have {unread_count} new {label}.</strong> '
                             '<a href="/notifications">See your updates</a></aside>')
-    if not rows:
-        empty = ('<p class="empty">No one has asked for help yet. '
-                 '<a href="/requests/new">Ask the community for help</a> to start the board.</p>')
-        account_message = ("You’re signed in. Post a request or apply to help."
-                           if request_context.user else
-                           "Everyone can browse. Sign in to post or apply to help.")
-        return page("Requests", "list.html", safe={"cards": empty, "notification": notification},
-                    account_message=account_message)
-    cards = []
-    for row in rows:
-        description_preview = row["description"].strip()
-        if len(description_preview) > 180:
-            description_preview = description_preview[:177].rstrip() + "..."
-        cards.append(render("card.html", id=row["id"], title=row["title"],
-                            skill=row["skill"], status=row["status"],
-                            status_class=status_class(row["status"]),
-                            display_name=row["display_name"],
-                            description_preview=description_preview,
-                            search_text=row["description"],
-                            author_initial=row["display_name"][:1].upper(),
-                            card_class="done-card" if row["status"] == "Done" else ""))
-    cards_html = '<ul class="cards">\n' + "\n".join(cards) + "\n</ul>"
-    account_message = ("You’re signed in. Post a request or apply to help."
-                       if request_context.user else
-                       "Everyone can browse. Sign in to post or apply to help.")
+    account_message = "Everyone can browse. Sign in to post or apply to help."
+    if request_context.user:
+        account_message = "You’re signed in. Post a request or apply to help."
+
+    cards_html = ('<p class="empty">No one has asked for help yet. '
+                  '<a href="/requests/new">Ask the community for help</a> to start the board.</p>')
+    if rows:
+        cards = []
+        for row in rows:
+            description = row["description"].strip()
+            if len(description) > 180:
+                description = description[:177].rstrip() + "..."
+
+            cards.append(render("card.html",
+                id=row["id"], title=row["title"], skill=row["skill"],
+                status=row["status"], status_class=status_class(row["status"]),
+                display_name=row["display_name"], description_preview=description,
+                search_text=row["description"], author_initial=row["display_name"][:1].upper(),
+                card_class="done-card" if row["status"] == "Done" else "",
+            ))
+        cards_html = '<ul class="cards">\n' + "\n".join(cards) + "\n</ul>"
+
     return page("Requests", "list.html", safe={"cards": cards_html, "notification": notification},
                 account_message=account_message)
+
 
 
 def requests_api():

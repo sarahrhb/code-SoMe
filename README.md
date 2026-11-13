@@ -1,51 +1,19 @@
-# SoMe Incubator Community Board
+# SoMe Incubator board
 
-This project gives the SoMe Incubator community one shared place to ask for help with
-content work. It is meant to make requests easier to find and follow without adding more
-messages to Slack.
+A small board for asking for help with editing, filming, design, copywriting or feedback. The live board is at [some.code-alumni.de](https://some.code-alumni.de).
 
-Open the board at [some.code-alumni.de](https://some.code-alumni.de).
+## Run it locally
 
-## Join the board
+```sh
+python3 app.py
+```
 
-Create an account with your `@code.berlin` email address and choose a username and
-password. You can browse requests without signing in. Sign in when you want to post,
-edit, or offer help.
+Open http://127.0.0.1:5001. The app uses Python's standard library and creates a local SQLite file called `board.db` when it starts.
 
-## Ask for help
+## Using the board
 
-1. Choose **Post a request**.
-2. Give it a clear title and describe what you need. Include useful details such as the
-   kind of help, timing, and whether you are offering an exchange.
-3. Choose a topic and post it. Your username appears with the request.
-4. Review the people who apply. Their CODE email is shown to you because they agreed to
-   share it. Accept or decline each application.
-5. When the request is finished, change its status to **Done**. You can then choose **Throw this receipt in the bin** to hide it from the board. Its Updates stay available, and the saved request can still be opened from those updates.
+Anyone can browse. Sign up with a `@code.berlin` email if you want to post or offer help. When you apply, you agree to share your email with the person who posted the request. They can accept or decline your offer.
 
-You can edit your own requests and delete them while they are open. After marking one
-done, use **Throw this receipt in the bin** to hide it from the board while keeping its
-request and updates saved. Other members can read requests, so do not put private or
-sensitive information in them.
+You can edit your own requests or delete them while they're open. When the work is done, mark the request **Done**. **Throw this receipt in the bin** takes it off the board. You can still open it from Updates.
 
-## Offer help
-
-1. Browse or search the open requests.
-2. Open a request you would like to help with.
-3. Apply and check the box agreeing to share your CODE email with the requester.
-4. Check **Updates** for the requester’s decision. Accepted projects appear in the
-   **My help** section on that same page.
-
-You can withdraw an application. If the requester accepts you and later marks the
-request done, you will see an update in **Updates**.
-
-## Updates
-
-The board shows private in-app updates when someone applies to your request, when an
-application is accepted or declined, when a helper withdraws, or when a request you
-applied to is marked done. Open **Updates** in the menu to read them or mark them as read.
-The board does not send email notifications.
-
-## A note about older requests
-
-Some requests were posted before accounts were added. They may still be visible, but
-there may be no active requester to review new applications.
+Updates stay in the app. If someone accepts your offer, the request also shows up under **My help**. Keep sensitive details out of request posts since anyone can read them.

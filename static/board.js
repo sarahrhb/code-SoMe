@@ -31,10 +31,7 @@
         const description = String(request.description || "").trim();
         const displayName = String(request.display_name || "");
         const skill = String(request.skill || "Other");
-        let status = "Open";
-        if (request.status === "Done") {
-            status = "Done";
-        }
+        const status = request.status === "Done" ? "Done" : "Open";
         const card = makeElement("li", "card testimonial-card" + (status === "Done" ? " done-card" : ""));
         const meta = makeElement("div", "card-meta");
         meta.append(makeElement("span", "tag", skill));
@@ -84,19 +81,23 @@
         const status = statusFilter.value;
 
         if (loadedFromApi) {
-            const visible = requests.filter(function (request) { return matches(request, words, skill, status); });
+            // The API list gets rebuilt. The server cards further down just get hidden.
             results.replaceChildren();
-            boardEmpty.hidden = requests.length !== 0;
-            noMatches.hidden = requests.length === 0 || visible.length !== 0;
-            if (visible.length) {
-                const list = makeElement("ul", "cards");
-                for (const request of visible) {
-                    const card = makeCard(request);
-                    list.append(card);
-                }
-                results.append(list);
+            let shown = 0;
+            const list = makeElement("ul", "cards");
+            for (const item of requests) {
+              if (matches(item, words, skill, status)) {
+                list.append(makeCard(item));
+                shown += 1;
+              }
             }
-            count.textContent = requests.length ? "Showing " + visible.length + " of " + requests.length + " requests." : "";
+
+            boardEmpty.hidden = requests.length !== 0;
+            noMatches.hidden = requests.length === 0 || shown !== 0;
+            if (shown) results.append(list);
+            count.textContent = requests.length
+                ? "Showing " + shown + " of " + requests.length + " requests."
+                : "";
             return;
         }
 
