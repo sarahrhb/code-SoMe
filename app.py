@@ -41,11 +41,6 @@ def init_db():
             skill TEXT NOT NULL,
             content_link TEXT,
             status TEXT NOT NULL)""")
-    count = conn.execute("SELECT COUNT(*) FROM help_requests").fetchone()[0]
-        conn.executemany(
-            "INSERT INTO help_requests (title, description, display_name, skill, content_link, status) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            examples,)
     conn.commit()
     conn.close()
 def get_request(request_id):
@@ -151,10 +146,12 @@ def render_form(data, errors=None, request_id=None, status=200):
                 content_link=data["content_link"] or "")
 
 
-# the pages 
+# pages etc
 
 def home():
     return redirect("/requests")
+
+
 def about():
     return page("About", "about.html")
 def list_requests():
@@ -163,6 +160,7 @@ def list_requests():
         empty = '<p class="empty">No requests yet. Be the first to ask for help!</p>'
         return page("Requests", "list.html", safe={"cards": empty})
     cards = []
+
     for row in rows:
         cards.append(render("card.html", id=row["id"], title=row["title"],
                             skill=row["skill"], status=row["status"],
@@ -244,7 +242,7 @@ def static_file(filename):# send a file from static
 
 # routing
 def handle_request(method, path, form):
-    For /requests/<id>/... we read the id from the URL (a "dynamic route").
+    # For /requests/<id>/... we read the id from the URL (a "dynamic route").
     parts = path.split("/") 
     request_id = None
     if len(parts) in (3, 4) and parts[1] == "requests" and parts[2].isdigit():
