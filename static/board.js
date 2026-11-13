@@ -4,7 +4,9 @@
     const skillFilter = document.querySelector("#request-skill");
     const statusFilter = document.querySelector("#request-status");
     const results = document.querySelector("#request-results");
-    if (!filters || !search || !skillFilter || !statusFilter || !results) return;
+    if (!filters || !search || !skillFilter || !statusFilter || !results) {
+      return;
+    }
 
     const count = document.querySelector("#request-count");
     const feedMessage = document.querySelector("#request-feed-message");
@@ -29,7 +31,10 @@
         const description = String(request.description || "").trim();
         const displayName = String(request.display_name || "");
         const skill = String(request.skill || "Other");
-        const status = request.status === "Done" ? "Done" : "Open";
+        let status = "Open";
+        if (request.status === "Done") {
+            status = "Done";
+        }
         const card = makeElement("li", "card testimonial-card" + (status === "Done" ? " done-card" : ""));
         const meta = makeElement("div", "card-meta");
         meta.append(makeElement("span", "tag", skill));
@@ -42,7 +47,10 @@
         heading.append(titleLink);
         card.append(heading);
 
-        const excerpt = description.length > 180 ? description.slice(0, 177).trimEnd() + "..." : description;
+        let excerpt = description;
+        if (description.length > 180) {
+          excerpt = description.slice(0, 177).trimEnd() + "...";
+        }
         card.append(makeElement("p", "request-quote", excerpt));
 
         const byline = makeElement("div", "card-byline");
@@ -50,7 +58,6 @@
         const author = makeElement("p", "by");
         author.append(document.createTextNode("By "));
         author.append(makeElement("strong", "", displayName));
-        author.append(makeElement("small", "", "Community request"));
         byline.append(author);
 
         const arrow = makeElement("a", "card-arrow");
@@ -83,7 +90,10 @@
             noMatches.hidden = requests.length === 0 || visible.length !== 0;
             if (visible.length) {
                 const list = makeElement("ul", "cards");
-                visible.forEach(function (request) { list.append(makeCard(request)); });
+                for (const request of visible) {
+                    const card = makeCard(request);
+                    list.append(card);
+                }
                 results.append(list);
             }
             count.textContent = requests.length ? "Showing " + visible.length + " of " + requests.length + " requests." : "";

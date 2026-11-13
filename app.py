@@ -120,20 +120,21 @@ def init_db():
 
 
 def get_request(request_id):
+    result = None
     rows = run_query("SELECT * FROM help_requests WHERE id = ?", (request_id,))
     if rows:
-        return rows[0]
-    return None
+        result = rows[0]
+    return result
 
 
 def check_form(form):
-    data = {
-        "title": form.get("title", "").strip(),
-        "description": form.get("description", "").strip(),
-        "skill": form.get("skill", ""),
-        "content_link": form.get("content_link", "").strip(),
-        "status": form.get("status", "Open"),
-    }
+    data = {}
+    data["title"] = form.get("title", "").strip()
+    data["description"] = form.get("description", "").strip()
+
+    data["skill"] = form.get("skill", "")
+    data["content_link"] = form.get("content_link", "").strip()
+    data["status"] = form.get("status", "Open")
     errors = []
     if not data["title"]:
         errors.append("Title: write a short title for the request.")

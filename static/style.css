@@ -24,9 +24,7 @@ body {
     line-height: 1.5;
 }
 
-a {
-    color: inherit;
-}
+a { color: inherit; }
 
 a:focus-visible,
 button:focus-visible,
@@ -59,9 +57,9 @@ select:focus-visible {
 }
 
 .logo-mark {
-    width: 42px;
-    height: 42px;
     display: block;
+  width: 42px;
+  height: 42px;
     flex: 0 0 auto;
     object-fit: contain;
     aspect-ratio: 1 / 1;
@@ -91,8 +89,8 @@ nav {
 }
 
 nav a {
+  text-decoration: none;
     color: var(--muted);
-    text-decoration: none;
 }
 
 nav a:hover,
@@ -104,9 +102,7 @@ nav span {
     color: var(--lime);
 }
 
-.inline-form {
-    display: inline;
-}
+.inline-form {display: inline;}
 
 nav button {
     padding: 0;
@@ -117,9 +113,7 @@ nav button {
     cursor: pointer;
 }
 
-nav button:hover {
-    color: var(--ink);
-}
+nav button:hover { color: var(--ink); }
 
 main {
     width: min(1160px, 88vw);
@@ -540,15 +534,6 @@ main > h1 {
     border-radius: 50%;
     color: var(--lime);
     font-family: Georgia, "Times New Roman", serif;
-}
-
-.card-byline .by small {
-    display: block;
-    margin-top: 2px;
-    color: var(--muted);
-    font-size: 0.64rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
 }
 
 .card-byline .card-arrow {
