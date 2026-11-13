@@ -2,11 +2,11 @@
 
 :root {color-scheme: dark;
     --night: #111215;
-    --panel: #42444f;
-    --panel-raised: #525564;
+    --panel: #191a20;
+    --panel-raised: #22232b;
     --ink: #f2efe8;
     --muted: #a7a49c;
-    --line: #393a40;
+    --line: #34353c;
     --lime: #C9FE6E;
     --orchid: #8170EF;
     --mint: #33DE7B;
@@ -391,6 +391,7 @@ main > h1 {
     flex-direction: column;
     align-items: flex-start;
     border: 1px solid var(--line);
+    border-top: 3px solid var(--lime);
     background: var(--panel-raised);
     transition: transform 180ms ease, border-color 180ms ease;
 }
@@ -406,6 +407,11 @@ main > h1 {
 .card:nth-child(4n + 3) {
     transform: rotate(0.35deg) translateY(-5px);
 }
+
+.card:nth-child(5n + 2) { border-top-color: var(--orchid); }
+.card:nth-child(5n + 3) { border-top-color: var(--mint); }
+.card:nth-child(5n + 4) { border-top-color: var(--rose); }
+.card:nth-child(5n + 5) { border-top-color: var(--pumpkin); }
 
 .card::after {
     width: 25px;
