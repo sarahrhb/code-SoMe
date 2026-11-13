@@ -128,12 +128,25 @@ main {
     padding: 48px 0 90px;
 }
 
-footer {
-    padding: 24px 6vw 34px;
+.site-footer {
+    width: min(1160px, 88vw);
+    margin: 0 auto;
+    padding: 18px 0 30px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px 20px;
     border-top: 1px solid var(--line);
     color: var(--muted);
-    font-size: 0.78rem;
-    text-align: center;
+    font-family: "DM Mono", monospace;
+    font-size: 0.66rem;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+}
+
+.site-footer span:first-child {
+    color: var(--lime);
 }
 
 .dashboard-head {
@@ -1132,6 +1145,12 @@ body > main > p {
     main {
         width: min(100% - 36px, 620px);
         padding-top: 28px;
+    }
+
+    .site-footer {
+        width: min(100% - 36px, 620px);
+        align-items: flex-start;
+        flex-direction: column;
     }
 
     .dashboard-head {
