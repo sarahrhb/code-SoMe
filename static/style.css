@@ -1,12 +1,10 @@
 { box-sizing: border-box;}
-
 body {
     margin: 0;
     font-family: Arial, Helvetica, sans-serif;
     line-height: 1.5;
     color: #222;
     background-color: #f6f3ee; }
-
 a {color:#5a2ca0;}
 a:focus,
 button:focus,
@@ -14,15 +12,12 @@ input:focus,
 textarea:focus,
 select:focus {
     outline: 3px solid #f2a900;
-    outline-offset: 2px;
-}
+    outline-offset: 2px;}
 
 /* header and navigation */
 .site-header
-{
-  background-color: #2b1650;
-    padding: 12px 16px;
-}
+{background-color: #2b1650;
+    padding: 12px 16px;}
 
 .logo {
     display: block;
@@ -31,37 +26,29 @@ select:focus {
     font-size: 1.2rem;
     text-decoration: none;
     margin-bottom: 8px;
-}
-
+    }
 nav a {
     display: inline-block;
     color: white;
     text-decoration: none;
     margin-right: 12px;
     padding: 4px 0;
-}
-
+    }
 nav a:hover {
     text-decoration: underline;
-}
-
+    }
 main {
     padding: 16px;
     max-width: 1100px;
     margin: 0 auto;
-}
-
+    }
 footer {
     text-align: center;
     font-size: 0.85rem;
     color: #666;
-    padding: 24px 16px;
-}
-
-h1 {
-    font-size: 1.6rem;
-    margin-top: 8px;
-}
+    padding: 24px 16px;}
+h1 { font-size: 1.6rem;
+margin-top: 8px;}
 
 /* buttons */
 .button {
@@ -73,18 +60,15 @@ h1 {
     padding: 10px 16px;
     font-size: 1rem;
     text-decoration: none;
-    cursor: pointer;
-}
+    cursor: pointer;}
 
 .button:hover{ background-color: #43207a; }
 
 .button-danger {
-    background-color: #b3261e;
-}
+    background-color: #b3261e}
 
 .button-danger:hover {
-    background-color: #8c1d17;
-}
+    background-color: #8c1d17}
 
 .actions {
     display: flex;
@@ -92,12 +76,10 @@ h1 {
     align-items: center;
     gap: 16px;
     margin-top: 20px;
-}
+    }
 
 /* list of request cards */
-.intro {
-    margin-bottom: 20px;
-}
+.intro {margin-bottom: 20px;}
 
 .cards {
   list-style: none;
@@ -119,24 +101,17 @@ h1 {
 .card h2 {
     font-size: 1.15rem;
     margin: 10px 0 4px;
-}
+    }
 
-.card h2 a {
-    text-decoration: none;
-}
+.card h2 a {text-decoration: none;}
 
-.card h2 a:hover {
-    text-decoration: underline;
-}
+.card h2 a:hover {text-decoration: underline;}
 
 .by {
     color: #666;
-    margin: 0;
-}
+    margin: 0;}
 
-.empty {
-    font-style: italic;
-}
+.empty {font-style: italic;}
 
 /* small labels */
 .tag,
@@ -145,31 +120,28 @@ h1 {
     font-size: 0.8rem;
     padding: 2px 8px;
     border-radius: 20px;
-}
+    }
 
 .tag {
     background-color: #eadff9;
     color: #43207a;
-}
+    }
 
-.status {
-    background-color: #ddd;
-}
+.status {background-color: #ddd;}
 
 .status-open {
     background-color: #d4f2dc;
     color: #1d6b34;
-}
+    }
 
 .status-in-progress {
     background-color: #fff0c2;
     color: #7a5800;
-}
+    }
 
 .status-done {
     background-color: #e2e2e2;
-    color: #444;
-}
+    color: #444;}
 
 /* detail page */
 .detail,
@@ -178,17 +150,13 @@ h1 {
 .about section {
     background-color: white;
     border-radius: 10px;
-    padding: 16px;
-}
+    padding: 16px;}
 
 .description {
     white-space: pre-line; /* keeps the line breaks people type */
-    overflow-wrap: break-word;
-}
+    overflow-wrap: break-word;}
 
-.detail a {
-    overflow-wrap: anywhere;
-}
+.detail a {overflow-wrap: anywhere;}
 
 /* form */
 .form label {
@@ -196,7 +164,7 @@ h1 {
     font-weight: bold;
     margin-top: 14px;
     margin-bottom: 4px;
-}
+    }
 
 .form input,
 .form textarea,
@@ -207,7 +175,7 @@ h1 {
     font-family: inherit;
     border: 1px solid #aaa;
     border-radius: 6px;
-}
+    }
     .errors {
         background-color: #fde8e7;
         border: 1px solid #b3261e;
