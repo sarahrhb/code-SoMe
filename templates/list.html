@@ -10,6 +10,17 @@
         <div class="filters">
             <label for="request-search">Search requests</label>
             <input type="search" id="request-search" placeholder="Search requests">
+            <label for="request-skill">Topic</label>
+            <select id="request-skill">
+                <option value="">All topics</option>
+                <option>Editing</option><option>Filming</option><option>Design</option>
+                <option>Copywriting</option><option>Feedback</option><option>Other</option>
+            </select>
+            <label for="request-status">Status</label>
+            <select id="request-status">
+                <option value="">All statuses</option>
+                <option>Open</option><option>Done</option>
+            </select>
             <p id="request-count" aria-live="polite"></p>
             <p id="no-matches" hidden>No requests match your search.</p>
         </div>
@@ -20,5 +31,5 @@
 
 <section class="board-index" aria-label="Community requests">
     <p class="index-label"><span>01 / REQUEST WALL</span><span>ALL REQUESTS</span></p>
-    $cards
+    <div id="request-results">$cards</div>
 </section>

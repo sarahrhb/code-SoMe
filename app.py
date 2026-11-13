@@ -4,6 +4,7 @@ import base64
 import hashlib
 import hmac
 import html
+import json
 import mimetypes
 import os
 import re
@@ -16,7 +17,7 @@ from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlsplit
 
-PORT = 5001
+PORT = int(os.environ.get("PORT", 5001))
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATABASE = os.path.join(HERE, "board.db")
@@ -341,6 +342,19 @@ def list_requests():
     return page("Requests", "list.html", safe={"cards": cards_html, "notification": notification},
                 account_message=("Post a request or offer to help."
                                  if request_context.user else "Everyone can read requests. Sign in to post your own."))
+
+
+def requests_api():
+    rows = run_query(
+        "SELECT id, title, description, display_name, skill, status "
+        "FROM help_requests WHERE archived_at IS NULL ORDER BY id DESC"
+    )
+    data = {
+        "requests": [dict(row) for row in rows],
+        "skills": SKILLS,
+        "statuses": STATUSES,
+    }
+    return 200, {"Content-Type": "application/json; charset=utf-8"}, json.dumps(data, ensure_ascii=False).encode("utf-8")
 
 
 def new_request():
@@ -861,6 +875,9 @@ def handle_request(method, path, form):
             return list_requests()
         if method == "POST":
             return create_request(form)
+    elif route == "/api/requests":
+        if method == "GET":
+            return requests_api()
     elif route == "/my-help":
         if method == "GET":
             return my_help()
@@ -995,7 +1012,7 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     init_db()
     server = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
-    print(f"Running on http://localhost:{PORT} (press Ctrl+C to stop)")
+    print(f"Running on http://127.0.0.1:{PORT} (press Ctrl+C to stop)")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
