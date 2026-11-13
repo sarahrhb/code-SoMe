@@ -1,26 +1,17 @@
-<p class="back-link"><a href="/requests">&larr; Back</a></p>
+<p><a href="/requests">&larr; Back to all requests</a></p>
 
-<article class="detail $detail_class" id="request-paper">
-    <div class="detail-heading">
-        <p class="eyebrow">REQUEST</p>
-        <div class="card-meta">
-            <span class="tag">$skill</span>
-            <span class="status $status_class">$status</span>
-        </div>
-    </div>
+<article class="detail">
+    <span class="tag">$skill</span>
+    <span class="status $status_class">$status</span>
     <h1>$title</h1>
-    <p class="by">Posted by <strong>$display_name</strong></p>
+    <p class="by">Asked by $display_name &middot; Request #$id</p>
 
-    <div class="detail-body">
-        <p class="eyebrow">What I need</p>
-        <p class="description">$description</p>
+    <p class="description">$description</p>
 
-        $link
+    $link
+
+    <div class="actions">
+        <a class="button" href="/requests/$id/edit">Edit</a>
+        <a class="button button-danger" href="/requests/$id/delete">Delete</a>
     </div>
-
-    $help_action
-    $helpers
-    $owner_actions
 </article>
-
-$receipt_control

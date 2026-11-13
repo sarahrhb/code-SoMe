@@ -1,11 +1,10 @@
 <div class="confirm">
     <h1>Delete this request?</h1>
-    <p>You are about to delete this forever <strong>“$title”</strong>.</p>
+    <p>You are about to delete <strong>"$title"</strong> (request #$id). This cannot be undone.</p>
     <form method="post" action="/requests/$id/delete">
-        $csrf_input
         <div class="actions">
-            <button class="button button-danger" type="submit">Yes, idc</button>
-            <a href="/requests/$id">nooooooo</a>
+            <button class="button button-danger" type="submit">Yes, delete it</button>
+            <a href="/requests/$id">No, go back</a>
         </div>
     </form>
 </div>

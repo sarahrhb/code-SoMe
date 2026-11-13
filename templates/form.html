@@ -3,36 +3,39 @@
 $errors
 
 <form class="form" method="post" action="$action">
-    $csrf_input
 
-    <label for="title">Request title</label>
-    <input type="text" id="title" name="title" maxlength="100" required aria-describedby="title-help" value="$title">
-    <p class="field-help" id="title-help">Keep it under 100 characters, no one wants to read an article here.</p>
+    <label for="title">Title</label>
+    <input type="text" id="title" name="title" maxlength="100" required
+           placeholder="Help edit a 30-second founder reel" value="$title">
 
-    <label for="description">What help do you need?</label>
-    <textarea id="description" name="description" rows="6" required aria-describedby="description-help">$description</textarea>
-    <p class="field-help" id="description-help">What do you need help with in details?</p>
+    <label for="description">Description</label>
+    <textarea id="description" name="description" rows="6" required
+              placeholder="What do you need, by when, and is it paid or a peer exchange?">$description</textarea>
 
-    <p class="field-help">Your username will appear with the request.</p>
+    <label for="display_name">Display name</label>
+    <input type="text" id="display_name" name="display_name" required value="$display_name">
 
     <div class="row">
         <div>
-            <label for="skill">Kind of help</label>
+            <label for="skill">Skill</label>
             <select id="skill" name="skill" required>
-                <option value="">Choose a topic</option>
+                <option value="">Choose a skill</option>
                 $skill_options
             </select>
         </div>
-        $status_control
+        <div>
+            <label for="status">Status</label>
+            <select id="status" name="status">
+                $status_options
+            </select>
+        </div>
     </div>
 
-    <label for="content_link">Link to the work (optional)</label>
-    <input type="url" id="content_link" name="content_link" value="$content_link" aria-describedby="content-link-help">
-    <p class="field-help" id="content-link-help">Add a link only if the person helping needs it to understand the request.</p>
+    <label for="content_link">Content link (optional)</label>
+    <input type="url" id="content_link" name="content_link" placeholder="https://..." value="$content_link">
 
     <div class="actions">
         <button class="button" type="submit">$button_text</button>
         <a href="$cancel_url">Cancel</a>
     </div>
-    <p class="form-note">$form_note</p>
 </form>

@@ -1,71 +1,37 @@
-"""Small help-request board backed by SQLite and HTML templates."""
-
-import base64
-import hashlib
-import hmac
 import html
-import json
 import mimetypes
 import os
-import re
-import secrets
 import sqlite3
 import string
-import threading
-import time
-from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlsplit
 
-PORT = int(os.environ.get("PORT", 5001))
+DATABASE = "board.db"
+PORT = 5001
 
+# folders next to this file
 HERE = os.path.dirname(os.path.abspath(__file__))
-DATABASE = os.path.join(HERE, "board.db")
 TEMPLATES = os.path.join(HERE, "templates")
 STATIC = os.path.join(HERE, "static")
 
 SKILLS = ["Editing", "Filming", "Design", "Copywriting", "Feedback", "Other"]
-STATUSES = ["Open", "Done"]
-SESSION_SECRET = os.environ.get("SESSION_SECRET", "") or secrets.token_urlsafe(48)
-COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "0") == "1"
-SESSION_SECONDS = 7 * 24 * 60 * 60
-PASSWORD_ITERATIONS = 310_000
-request_context = threading.local()
+STATUSES = ["Open", "In progress", "Done"]
 
+
+# database hereeee my girl
 
 def get_db():
     conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
+    conn.row_factory = sqlite3.Row  # so I can use row["title"]
     return conn
-
-
 def run_query(sql, params=()):
     conn = get_db()
-    try:
-        rows = conn.execute(sql, params).fetchall()
-        conn.commit()
-        return rows
-    finally:
-        conn.close()
-
-
+    rows = conn.execute(sql, params).fetchall()
+    conn.commit()
+    conn.close()
+    return rows
 def init_db():
-    # Add new columns without replacing the existing request database.
     conn = get_db()
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT NOT NULL COLLATE NOCASE UNIQUE,
-            email TEXT UNIQUE COLLATE NOCASE,
-            salt TEXT NOT NULL,
-            password_hash TEXT NOT NULL
-        )
-    """)
-    user_columns = {row["name"] for row in conn.execute("PRAGMA table_info(users)")}
-    if "email" not in user_columns:
-        conn.execute("ALTER TABLE users ADD COLUMN email TEXT")
-    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique ON users(email COLLATE NOCASE)")
     conn.execute("""
         CREATE TABLE IF NOT EXISTS help_requests (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -74,158 +40,49 @@ def init_db():
             display_name TEXT NOT NULL,
             skill TEXT NOT NULL,
             content_link TEXT,
-            status TEXT NOT NULL,
-            owner_id INTEGER REFERENCES users(id)
-        )
-    """)
-    columns = {row["name"] for row in conn.execute("PRAGMA table_info(help_requests)")}
-    if "owner_id" not in columns:
-        # Old requests have no owner and remain read-only.
-        conn.execute("ALTER TABLE help_requests ADD COLUMN owner_id INTEGER REFERENCES users(id)")
-    if "archived_at" not in columns:
-        # Completed requests can leave the board while remaining available to Updates.
-        conn.execute("ALTER TABLE help_requests ADD COLUMN archived_at TEXT")
-    conn.execute("UPDATE help_requests SET status = 'Open' WHERE status = 'In progress'")
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS request_helpers (
-            request_id INTEGER NOT NULL REFERENCES help_requests(id),
-            helper_id INTEGER NOT NULL REFERENCES users(id),
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            decision TEXT NOT NULL DEFAULT 'Pending',
-            UNIQUE (request_id, helper_id)
-        )
-    """)
-    helper_columns = {row["name"] for row in conn.execute("PRAGMA table_info(request_helpers)")}
-    if "decision" not in helper_columns:
-        # Older offers become pending applications for the request owner to review.
-        conn.execute("ALTER TABLE request_helpers ADD COLUMN decision TEXT NOT NULL DEFAULT 'Pending'")
-    if "email_shared" not in helper_columns:
-        # Existing applications did not record consent, so do not reveal their email.
-        conn.execute("ALTER TABLE request_helpers ADD COLUMN email_shared INTEGER NOT NULL DEFAULT 0")
-    conn.execute("UPDATE request_helpers SET decision = 'Closed' WHERE decision = 'Pending' AND request_id IN (SELECT id FROM help_requests WHERE owner_id IS NULL)")
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS notifications (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            request_id INTEGER REFERENCES help_requests(id) ON DELETE CASCADE,
-            message TEXT NOT NULL,
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            read_at TEXT
-        )
-    """)
-    conn.execute("CREATE INDEX IF NOT EXISTS notifications_user_created ON notifications(user_id, created_at DESC)")
-    conn.execute("CREATE INDEX IF NOT EXISTS notifications_user_unread ON notifications(user_id, read_at)")
+            status TEXT NOT NULL)""")
+    count = conn.execute("SELECT COUNT(*) FROM help_requests").fetchone()[0]
+        conn.executemany(
+            "INSERT INTO help_requests (title, description, display_name, skill, content_link, status) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            examples,)
     conn.commit()
     conn.close()
-
-
 def get_request(request_id):
-    result = None
     rows = run_query("SELECT * FROM help_requests WHERE id = ?", (request_id,))
     if rows:
-        result = rows[0]
-    return result
-
-
+        return rows[0]
+    return None
 def check_form(form):
-    data = {}
-    data["title"] = form.get("title", "").strip()
-    data["description"] = form.get("description", "").strip()
-
-    data["skill"] = form.get("skill", "")
-    data["content_link"] = form.get("content_link", "").strip()
-    data["status"] = form.get("status", "Open")
+    data = {
+        "title": form.get("title", "").strip(),
+        "description": form.get("description", "").strip(),
+        "display_name": form.get("display_name", "").strip(),
+        "skill": form.get("skill", ""),
+        "content_link": form.get("content_link", "").strip(),
+        "status": form.get("status", "Open"),}
     errors = []
     if not data["title"]:
-        errors.append("Title: write a short title for the request.")
+        errors.append("Please write a title.")
     if len(data["title"]) > 100:
-        errors.append("Title: keep it under 100 characters, no one wants to read an article here")
+        errors.append("The title can be at most 100 characters.")
     if not data["description"]:
-        errors.append("Description: describe the help you need. Remember, keep it short, not like a job description.")
+        errors.append("Please write a description.")
+    if not data["display_name"]:
+        errors.append("Please write a display name.")
     if data["skill"] not in SKILLS:
-        errors.append("Kind of help: choose one of the listed topics.")
+        errors.append("Please choose a skill from the list.")
     if data["status"] not in STATUSES:
-        errors.append("Request status: choose Open or Done.")
+        errors.append("Please choose a status from the list.")
     if data["content_link"] and not data["content_link"].startswith(("http://", "https://")):
-        errors.append("Content link: use an address starting with http:// or https://.")
+        errors.append("The link must start with http:// or https://")
     return data, errors
 
 
-def password_record(password, salt=None):
-    salt = salt or secrets.token_hex(16)
-    hashed = hashlib.pbkdf2_hmac("sha256", password.encode(), bytes.fromhex(salt), PASSWORD_ITERATIONS).hex()
-    return salt, hashed
-
-
-def signed_session(user_id, expires, csrf):
-    payload = f"{user_id}:{expires}:{csrf}"
-    signature = hmac.new(SESSION_SECRET.encode(), payload.encode(), hashlib.sha256).hexdigest()
-    return base64.urlsafe_b64encode(f"{payload}:{signature}".encode()).decode().rstrip("=")
-
-
-def read_session(cookie_header):
-    cookie = SimpleCookie()
-    try:
-        cookie.load(cookie_header or "")
-        value = cookie.get("board_session")
-        if not value:
-            return None
-        decoded = base64.urlsafe_b64decode(value.value + "=" * (-len(value.value) % 4)).decode()
-        user_id, expires, csrf, signature = decoded.split(":", 3)
-        payload = f"{user_id}:{expires}:{csrf}"
-        expected = hmac.new(SESSION_SECRET.encode(), payload.encode(), hashlib.sha256).hexdigest()
-        if int(expires) < int(time.time()) or not hmac.compare_digest(signature, expected):
-            return None
-        rows = run_query("SELECT id, username FROM users WHERE id = ?", (int(user_id),))
-        return {"id": int(user_id), "username": rows[0]["username"], "csrf": csrf} if rows else None
-    except (ValueError, TypeError, UnicodeDecodeError):
-        return None
-
-
-def csrf_input():
-    return f'<input type="hidden" name="csrf" value="{html.escape(request_context.csrf)}">'
-
-
-def add_notification(user_id, request_id, message):
-    if user_id:
-        run_query("INSERT INTO notifications (user_id, request_id, message) VALUES (?, ?, ?)",
-                  (user_id, request_id, message))
-
-
-def unread_notification_count(user_id):
-    rows = run_query("SELECT COUNT(*) AS total FROM notifications WHERE user_id = ? AND read_at IS NULL",
-                     (user_id,))
-    return rows[0]["total"]
-
-
-def render_notifications(rows):
-    items = []
-    for row in rows:
-        unread_class = " unread" if row["read_at"] is None else ""
-        message = html.escape(row["message"])
-        link = (f'<a href="/requests/{int(row["request_id"])}">Open request</a>'
-                if row["request_id"] is not None else "")
-        mark_read = ""
-        if row["read_at"] is None:
-            mark_read = (
-                f'<form method="post" action="/notifications/read">{csrf_input()}'
-                f'<input type="hidden" name="notification_id" value="{int(row["id"])}">'
-                '<button class="button button-quiet" type="submit">Mark read</button></form>'
-            )
-        items.append(
-            f'<li class="notification-item{unread_class}"><div><p>{message}</p>'
-            f'<time>{html.escape(row["created_at"])}</time></div>'
-            f'<div class="notification-actions">{link}{mark_read}</div></li>'
-        )
-    return '<ul class="notification-list">' + "".join(items) + "</ul>" if items else ""
-
-
-def account_page(title, template, **values):
-    return page(title, template, safe={"csrf_input": csrf_input()}, **values)
+# end of database my girrlll
 
 
 def render(name, safe=None, **values):
-    # Escape user-provided values. Only HTML assembled here can be passed as safe.
     with open(os.path.join(TEMPLATES, name), encoding="utf-8") as file:
         template = string.Template(file.read())
     filled = {key: html.escape(str(value)) for key, value in values.items()}
@@ -233,23 +90,14 @@ def render(name, safe=None, **values):
     return template.substitute(filled)
 
 
-def page(page_title, name, http_status=200, safe=None, **values):
+def page(page_title, name, http_status=200, safe=None, **values): 
     content = render(name, safe, **values)
-    user = getattr(request_context, "user", None)
-    if user:
-        unread_count = unread_notification_count(user["id"])
-        badge = f'<span class="notification-count">{unread_count}</span>' if unread_count else ""
-        controls = (f'<a href="/notifications">Updates {badge}</a> '
-                    f'<form class="inline-form" method="post" action="/logout">{csrf_input()}'
-                    '<button type="submit">Sign out</button></form>')
-    else:
-        controls = '<a href="/login">Sign in</a> <a href="/signup">Create account</a>'
-    body = render("base.html", safe={"content": content, "account_controls": controls}, page_title=page_title)
+    body = render("base.html", safe={"content": content}, page_title=page_title)
     return http_status, {"Content-Type": "text/html; charset=utf-8"}, body.encode("utf-8")
 
 
 def redirect(url):
-    return 302, {"Location": url}, b""
+    return 302, {"Location": url}, b"" # telling the browser to go to another page
 
 
 def error_page(title, message, status):
@@ -261,15 +109,15 @@ def not_found():
                       "This page or request does not exist (maybe it was deleted).", 404)
 
 
-def status_class(status):
+def status_class(status): # "Open" -> "Done" etc etc
     return "status-" + status.lower().replace(" ", "-")
 
 
 def make_options(choices, chosen):
     options = []
     for choice in choices:
-        value = html.escape(choice)
         selected = " selected" if choice == chosen else ""
+        value = html.escape(choice)
         options.append(f'<option value="{value}"{selected}>{value}</option>')
     return "\n".join(options)
 
@@ -282,7 +130,7 @@ def render_form(data, errors=None, request_id=None, status=200):
         errors_html = render("errors.html", safe={"items": items})
     if editing:
         title = "Edit request"
-        heading = "Edit request"
+        heading = f"Edit request #{request_id}"
         action = f"/requests/{request_id}/edit"
         button_text = "Save changes"
         cancel_url = f"/requests/{request_id}"
@@ -293,112 +141,56 @@ def render_form(data, errors=None, request_id=None, status=200):
         cancel_url = "/requests"
     safe = {
         "errors": errors_html,
-        "csrf_input": csrf_input(),
         "skill_options": make_options(SKILLS, data["skill"]),
-        "status_control": (
-            '<div><label for="status">Request status</label>'
-            '<select id="status" name="status">'
-            + make_options(STATUSES, data["status"]) + '</select></div>'
-            if editing else
-            '<p class="status-note">New requests start Open. Mark yours Done when the help is complete.</p>'
-        ),
-        "form_note": (
-            "Only your account can edit this request. You can delete it while it’s open."
-            if editing else "Only you can edit this after you post it."
-        ),
+        "status_options": make_options(STATUSES, data["status"]),
     }
     return page(title, "form.html", status, safe,
                 heading=heading, action=action, button_text=button_text,
                 cancel_url=cancel_url, title=data["title"],
-                description=data["description"],
+                description=data["description"], display_name=data["display_name"],
                 content_link=data["content_link"] or "")
 
 
+# the pages 
+
 def home():
     return redirect("/requests")
-
-
 def about():
     return page("About", "about.html")
-
-
 def list_requests():
-    rows = run_query("SELECT * FROM help_requests WHERE archived_at IS NULL ORDER BY id DESC")
-    notification = ""
-    if request_context.user:
-        unread_count = unread_notification_count(request_context.user["id"])
-        if unread_count:
-            label = "update" if unread_count == 1 else "updates"
-            notification = ('<aside class="accepted-notice" aria-live="polite">'
-                            f'<strong>You have {unread_count} new {label}.</strong> '
-                            '<a href="/notifications">See your updates</a></aside>')
-    account_message = "Everyone can browse. Sign in to post or apply to help."
-    if request_context.user:
-        account_message = "You’re signed in. Post a request or apply to help."
-
-    cards_html = ('<p class="empty">No one has asked for help yet. '
-                  '<a href="/requests/new">Ask the community for help</a> to start the board.</p>')
-    if rows:
-        cards = []
-        for row in rows:
-            description = row["description"].strip()
-            if len(description) > 180:
-                description = description[:177].rstrip() + "..."
-
-            cards.append(render("card.html",
-                id=row["id"], title=row["title"], skill=row["skill"],
-                status=row["status"], status_class=status_class(row["status"]),
-                display_name=row["display_name"], description_preview=description,
-                search_text=row["description"], author_initial=row["display_name"][:1].upper(),
-                card_class="done-card" if row["status"] == "Done" else "",
-            ))
-        cards_html = '<ul class="cards">\n' + "\n".join(cards) + "\n</ul>"
-
-    return page("Requests", "list.html", safe={"cards": cards_html, "notification": notification},
-                account_message=account_message)
-
-
-
-def requests_api():
-    rows = run_query(
-        "SELECT id, title, description, display_name, skill, status "
-        "FROM help_requests WHERE archived_at IS NULL ORDER BY id DESC"
-    )
-    data = {
-        "requests": [dict(row) for row in rows],
-        "skills": SKILLS,
-        "statuses": STATUSES,
-    }
-    return 200, {"Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store"}, json.dumps(data, ensure_ascii=False).encode("utf-8")
-
-
+    rows = run_query("SELECT * FROM help_requests ORDER BY id DESC")
+    if not rows:
+        empty = '<p class="empty">No requests yet. Be the first to ask for help!</p>'
+        return page("Requests", "list.html", safe={"cards": empty})
+    cards = []
+    for row in rows:
+        cards.append(render("card.html", id=row["id"], title=row["title"],
+                            skill=row["skill"], status=row["status"],
+                            status_class=status_class(row["status"]),
+                            display_name=row["display_name"]))
+    cards_html = '<ul class="cards">\n' + "\n".join(cards) + "\n</ul>"
+    return page("Requests", "list.html", safe={"cards": cards_html})
 def new_request():
-    if not request_context.user:
-        return redirect("/login")
-    empty = {"title": "", "description": "", "skill": "",
+    empty = {"title": "", "description": "", "display_name": "", "skill": "",
              "content_link": "", "status": "Open"}
     return render_form(empty)
-
-
+#create request
 def create_request(form):
-    if not request_context.user:
-        return redirect("/login")
     data, errors = check_form(form)
     if errors:
         return render_form(data, errors, status=400)
     conn = get_db()
     cursor = conn.execute(
-        "INSERT INTO help_requests (title, description, display_name, skill, content_link, status, owner_id) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (data["title"], data["description"], request_context.user["username"], data["skill"],
-         data["content_link"], data["status"], request_context.user["id"]),
+        "INSERT INTO help_requests (title, description, display_name, skill, content_link, status) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        (data["title"], data["description"], data["display_name"], data["skill"],
+         data["content_link"], data["status"]),
     )
     conn.commit()
     new_id = cursor.lastrowid
     conn.close()
     return redirect(f"/requests/{new_id}")
-
-
+#find request
 def show_request(request_id):
     row = get_request(request_id)
     if row is None:
@@ -407,443 +199,41 @@ def show_request(request_id):
     if row["content_link"]:
         link = html.escape(row["content_link"])
         link_html = f'<p>Content link: <a href="{link}" rel="noopener nofollow">{link}</a></p>'
-    owner_actions = ""
-    help_action = ""
-    helpers_html = ""
-    archived = bool(row["archived_at"])
-    if archived:
-        help_action = '<p class="archived-note">This request was put in the bin.</p>'
-    elif request_context.user and row["owner_id"] == request_context.user["id"]:
-        delete_action = (f'<a class="button button-danger" href="/requests/{row["id"]}/delete">Delete</a>'
-                         if row["status"] != "Done" else "")
-        owner_actions = (f'<div class="actions"><a class="button" href="/requests/{row["id"]}/edit">Edit</a> '
-                         f'{delete_action}</div>')
-        helpers = run_query(
-            "SELECT users.id, users.username, users.email, request_helpers.email_shared, request_helpers.decision, request_helpers.created_at "
-            "FROM request_helpers JOIN users ON users.id = request_helpers.helper_id "
-            "WHERE request_helpers.request_id = ? AND request_helpers.decision IN ('Pending', 'Accepted') "
-            "ORDER BY CASE request_helpers.decision WHEN 'Pending' THEN 0 ELSE 1 END, request_helpers.created_at",
-            (row["id"],),
-        )
-        if helpers:
-            helper_rows = []
-            for helper in helpers:
-                username = html.escape(helper["username"])
-                email = html.escape(helper["email"] or "No email saved") if helper["email_shared"] else "Email not shared"
-                decision = helper["decision"]
-                if decision == "Pending":
-                    if row["status"] != "Done":
-                        accept_form = (
-                            f'<form method="post" action="/requests/{row["id"]}/applications">{csrf_input()}'
-                            f'<input type="hidden" name="helper_id" value="{int(helper["id"])}">'
-                            '<button class="button application-button" type="submit" name="decision" value="accept">Accept their help</button></form>'
-                        )
-                        decline_form = (
-                            f'<form method="post" action="/requests/{row["id"]}/applications">{csrf_input()}'
-                            f'<input type="hidden" name="helper_id" value="{int(helper["id"])}">'
-                            '<button class="button button-quiet application-button" type="submit" name="decision" value="decline">Decline</button></form>'
-                        )
-                        buttons = accept_form + decline_form
-                    else:
-                        buttons = (
-                            f'<form method="post" action="/requests/{row["id"]}/applications">{csrf_input()}'
-                            f'<input type="hidden" name="helper_id" value="{int(helper["id"])}">'
-                            '<button class="button button-quiet application-button" type="submit" name="decision" value="decline">Decline</button></form>'
-                        )
-                    controls = '<div class="application-actions">' + buttons + '</div>'
-                    status_label = '<span class="application-status pending">Pending</span>'
-                else:
-                    controls = '<span class="application-status accepted">Accepted</span>'
-                    status_label = ""
-                helper_rows.append(
-                    '<li class="application-row"><div class="application-person">'
-                    f'<strong>{username}</strong> {status_label}<small>{email}</small></div>{controls}</li>'
-                )
-            helpers_html = (
-                '<section class="helper-list"><p class="eyebrow">HELP APPLICATIONS</p>'
-                '<p>Applicants’ CODE emails are shown only to you.</p><ul>'
-                + "".join(helper_rows) + "</ul></section>"
-            )
-        else:
-            helpers_html = (
-                '<section class="helper-list"><p class="eyebrow">HELP APPLICATIONS</p>'
-                '<p>No applications or accepted helpers yet. Maybe do some marketing for it! </p></section>'
-            )
-    elif request_context.user:
-        applications = run_query(
-            "SELECT decision FROM request_helpers WHERE request_id = ? AND helper_id = ?",
-            (row["id"], request_context.user["id"]),
-        )
-        decision = applications[0]["decision"] if applications else None
-        if decision in ("Pending", "Accepted"):
-            if row["status"] == "Done":
-                message = "This request is marked done. It is no longer looking for help."
-            elif decision == "Pending":
-                message = "Your application is waiting for a reply. The requester can see your CODE email."
-            else:
-                message = "Good news! Your help got accepted! Find this project in <a href=\"/notifications#my-help\">Updates</a>."
-            help_action = (
-                f'<div class="help-action"><p>{message}</p>'
-                f'<form method="post" action="/requests/{row["id"]}/interest/withdraw">{csrf_input()}'
-                '<button class="button button-quiet" type="submit">Withdraw application</button></form></div>'
-            )
-        elif decision in ("Declined", "Closed"):
-            if row["status"] != "Done" and row["owner_id"] is not None:
-                message = ("Your help got decined. You can apply again if you’d still like to help."
-                           if decision == "Declined" else "This request was closed before your application was reviewed. It is open again, so you can apply if you’d still like to help.")
-                help_action = (
-                    f'<div class="help-action"><p>{message}</p>'
-                    f'<form method="post" action="/requests/{row["id"]}/interest">{csrf_input()}'
-                    '<label class="consent-check"><input type="checkbox" name="share_email" value="yes" required>'
-                    '<span>I agree to share my CODE email with the requester so they can contact me about helping.</span></label>'
-                    '<button class="button" type="submit">Apply again</button></form></div>'
-                )
-            else:
-                message = ("The requester declined this application." if decision == "Declined"
-                           else "The request was marked done before your application was reviewed."
-                           if row["status"] == "Done" else
-                           "This request has no active requester, so it cannot receive help applications.")
-                help_action = f'<p class="help-action">{message}</p>'
-        elif row["status"] != "Done":
-            if row["owner_id"] is None:
-                help_action = '<p class="help-action">This request has no active requester, so it cannot receive help applications.</p>'
-            else:
-                user_rows = run_query("SELECT email FROM users WHERE id = ?", (request_context.user["id"],))
-                has_email = bool(user_rows and user_rows[0]["email"])
-                if has_email:
-                    help_action = (
-                        '<div class="help-action"><p>Apply to help? The requester will see your CODE email so they can decide.</p>'
-                        f'<form method="post" action="/requests/{row["id"]}/interest">{csrf_input()}'
-                        '<label class="consent-check"><input type="checkbox" name="share_email" value="yes" required>'
-                        '<span>I agree to share my CODE email with the requester so they can contact me about helping.</span></label>'
-                        '<button class="button" type="submit">Apply to help <span aria-hidden="true">↗</span></button></form></div>'
-                    )
-                else:
-                    help_action = '<p class="help-action">Your account has no email address saved, so you cannot apply to help.</p>'
-    elif not request_context.user and row["status"] != "Done" and row["owner_id"] is not None:
-        help_action = '<p class="help-action"><a href="/login">Sign in</a> to apply to help. Your CODE email will be shared with the request owner for them to contact you.</p>'
-    detail_class = "completed-request" if row["status"] == "Done" else "open-request"
-    receipt_control = ""
-    if row["status"] == "Done" and not archived and request_context.user and row["owner_id"] == request_context.user["id"]:
-        receipt_control = (
-            '<div class="receipt-tools"><p>Finished with this request?</p>'
-            f'<form method="post" action="/requests/{row["id"]}/archive">{csrf_input()}'
-            '<button class="receipt-button" type="submit">Throw this receipt in the bin</button></form>'
-            '</div>'
-        )
-    return page(row["title"], "detail.html",
-                safe={"link": link_html, "owner_actions": owner_actions,
-                      "help_action": help_action, "helpers": helpers_html,
-                      "receipt_control": receipt_control},
+    return page(row["title"], "detail.html", safe={"link": link_html},
                 id=row["id"], title=row["title"], skill=row["skill"],
-                status=row["status"], status_class=status_class(row["status"]), detail_class=detail_class,
+                status=row["status"], status_class=status_class(row["status"]),
                 display_name=row["display_name"], description=row["description"])
-
-
-def archive_request(request_id):
-    row = get_request(request_id)
-    if row is None:
-        return not_found()
-    if not request_context.user or row["owner_id"] != request_context.user["id"]:
-        return error_page("Not your request", "You can only put your own requests in the bin.", 403)
-    if row["status"] != "Done":
-        return error_page("Request still open", "Mark this request done before putting it in the bin.", 400)
-    if row["archived_at"]:
-        return redirect("/requests")
-    run_query("UPDATE help_requests SET archived_at = CURRENT_TIMESTAMP WHERE id = ? AND owner_id = ? AND archived_at IS NULL",
-              (request_id, request_context.user["id"]))
-    add_notification(request_context.user["id"], request_id,
-                     f'You put “{row["title"]}” in the bin. It is hidden from the request board.')
-    return redirect("/requests")
-
-
+#edit request
 def edit_request(request_id):
     row = get_request(request_id)
     if row is None:
         return not_found()
-    if not request_context.user or row["owner_id"] != request_context.user["id"]:
-        return error_page("Not your request", "You can only edit requests created by your account.", 403)
-    if row["archived_at"]:
-        return error_page("Request is in the bin", "This request has been removed from the board and can’t be edited.", 400)
     return render_form(row, request_id=request_id)
-
-
 def update_request(request_id, form):
-    row = get_request(request_id)
-    if row is None:
+    if get_request(request_id) is None:
         return not_found()
-    if not request_context.user or row["owner_id"] != request_context.user["id"]:
-        return error_page("Not your request", "You can only edit requests created by your account.", 403)
-    if row["archived_at"]:
-        return error_page("Request is in the bin", "This request has been removed from the board and can’t be edited.", 400)
     data, errors = check_form(form)
     if errors:
         return render_form(data, errors, request_id, status=400)
-    completing = row["status"] != "Done" and data["status"] == "Done"
-    reopening = row["status"] == "Done" and data["status"] == "Open"
-    involved_helpers = []
-    if completing:
-        involved_helpers = run_query(
-            "SELECT helper_id, decision FROM request_helpers WHERE request_id = ? AND decision IN ('Pending', 'Accepted')",
-            (request_id,),
-        )
-    accepted_helpers = []
-    if reopening:
-        accepted_helpers = run_query(
-            "SELECT helper_id FROM request_helpers WHERE request_id = ? AND decision = 'Accepted'",
-            (request_id,),
-        )
     run_query(
-        "UPDATE help_requests SET title = ?, description = ?, skill = ?, "
-        "content_link = ?, status = ? WHERE id = ? AND owner_id = ?",
-        (data["title"], data["description"], data["skill"],
-         data["content_link"], data["status"], request_id, request_context.user["id"]),
-    )
-    if completing:
-        run_query("UPDATE request_helpers SET decision = 'Closed' WHERE request_id = ? AND decision = 'Pending'",
-                  (request_id,))
-        for helper in involved_helpers:
-            message = (f'The request “{data["title"]}” was marked done. Thanks for offering to help.'
-                       if helper["decision"] == "Accepted" else
-                       f'The request “{data["title"]}” was marked done before your application was reviewed.')
-            add_notification(helper["helper_id"], request_id, message)
-    if reopening:
-        for helper in accepted_helpers:
-            add_notification(helper["helper_id"], request_id,
-                             f'The request “{data["title"]}” is open again and the requester can use your help.')
+        "UPDATE help_requests SET title = ?, description = ?, display_name = ?, skill = ?, "
+        "content_link = ?, status = ? WHERE id = ?",
+        (data["title"], data["description"], data["display_name"], data["skill"],
+         data["content_link"], data["status"], request_id))
     return redirect(f"/requests/{request_id}")
-
-
-def confirm_delete(request_id):
+def confirm_delete(request_id):# shows a question
     row = get_request(request_id)
     if row is None:
         return not_found()
-    if not request_context.user or row["owner_id"] != request_context.user["id"]:
-        return error_page("Not your request", "You can only delete requests created by your account.", 403)
-    if row["status"] == "Done" or row["archived_at"]:
-        return error_page("Request is done", "Use the receipt action to remove a completed request from the board and keep its updates.", 400)
-    return page("Delete request", "delete.html", safe={"csrf_input": csrf_input()}, id=row["id"], title=row["title"])
-
-
+    return page("Delete request", "delete.html", id=row["id"], title=row["title"])
 def delete_request(request_id):
-    row = get_request(request_id)
-    if row is None:
+    if get_request(request_id) is None:
         return not_found()
-    if not request_context.user or row["owner_id"] != request_context.user["id"]:
-        return error_page("Not your request", "You can only delete requests created by your account.", 403)
-    if row["status"] == "Done" or row["archived_at"]:
-        return error_page("Request is done", "Use the receipt action to remove a completed request from the board and keep its updates.", 400)
-    conn = get_db()
-    conn.execute("DELETE FROM request_helpers WHERE request_id = ?", (request_id,))
-    conn.execute("DELETE FROM help_requests WHERE id = ? AND owner_id = ?", (request_id, request_context.user["id"]))
-    conn.commit()
-    conn.close()
+    run_query("DELETE FROM help_requests WHERE id = ?", (request_id,))
     return redirect("/requests")
 
 
-def offer_help(request_id, form):
-    row = get_request(request_id)
-    if row is None:
-        return not_found()
-    if not request_context.user:
-        return redirect("/login")
-    if row["owner_id"] == request_context.user["id"]:
-        return error_page("This is your request", "You cannot offer help on your own request.", 400)
-    if row["owner_id"] is None:
-        return error_page("Requester unavailable", "This request has no active requester, so it cannot receive help applications.", 400)
-    if form.get("share_email") != "yes":
-        return error_page("Please confirm email sharing", "Check the box to agree to share your CODE email with the requester before applying.", 400)
-    if row["status"] == "Done":
-        return error_page("Request completed", "This request is marked done and is no longer taking offers.", 400)
-    users = run_query("SELECT email FROM users WHERE id = ?", (request_context.user["id"],))
-    if not users or not users[0]["email"]:
-        return error_page("Email needed", "Add a CODE email to your account before offering help.", 400)
-    existing = run_query(
-        "SELECT decision FROM request_helpers WHERE request_id = ? AND helper_id = ?",
-        (request_id, request_context.user["id"]),
-    )
-    if existing and existing[0]["decision"] in ("Declined", "Closed"):
-        run_query(
-            "UPDATE request_helpers SET decision = 'Pending', email_shared = 1, created_at = CURRENT_TIMESTAMP "
-            "WHERE request_id = ? AND helper_id = ? AND decision IN ('Declined', 'Closed')",
-            (request_id, request_context.user["id"]),
-        )
-        add_notification(row["owner_id"], request_id,
-                         f'{request_context.user["username"]} applied again to help with “{row["title"]}”.')
-    elif not existing:
-        run_query("INSERT INTO request_helpers (request_id, helper_id, decision, email_shared) VALUES (?, ?, 'Pending', 1)",
-                  (request_id, request_context.user["id"]))
-        add_notification(row["owner_id"], request_id,
-                         f'{request_context.user["username"]} wants to help with “{row["title"]}”.')
-    return redirect(f"/requests/{request_id}")
-
-
-def decide_application(request_id, form):
-    row = get_request(request_id)
-    if row is None:
-        return not_found()
-    if not request_context.user or row["owner_id"] != request_context.user["id"]:
-        return error_page("Not your request", "Only the requester can accept or decline applications.", 403)
-    helper_id = form.get("helper_id", "")
-    decision = form.get("decision", "")
-    if not helper_id.isdigit() or decision not in ("accept", "decline"):
-        return error_page("Invalid decision", "Choose a valid application and decision.", 400)
-    application = run_query(
-        "SELECT decision FROM request_helpers WHERE request_id = ? AND helper_id = ?",
-        (request_id, int(helper_id)),
-    )
-    if not application or application[0]["decision"] != "Pending":
-        return error_page("Application already reviewed", "This application is no longer waiting for a decision.", 400)
-    if decision == "accept" and row["status"] == "Done":
-        return error_page("Request completed", "A completed request cannot accept another helper.", 400)
-    next_decision = "Accepted" if decision == "accept" else "Declined"
-    run_query(
-        "UPDATE request_helpers SET decision = ? WHERE request_id = ? AND helper_id = ? AND decision = 'Pending'",
-        (next_decision, request_id, int(helper_id)),
-    )
-    add_notification(int(helper_id), request_id,
-                     f'Your application for “{row["title"]}” was {next_decision.lower()} by {row["display_name"]}.')
-    return redirect(f"/requests/{request_id}")
-
-
-def withdraw_help(request_id):
-    row = get_request(request_id)
-    if row is None:
-        return not_found()
-    if not request_context.user:
-        return redirect("/login")
-    applications = run_query(
-        "SELECT decision FROM request_helpers WHERE request_id = ? AND helper_id = ?",
-        (request_id, request_context.user["id"]),
-    )
-    run_query("DELETE FROM request_helpers WHERE request_id = ? AND helper_id = ?",
-              (request_id, request_context.user["id"]))
-    if applications and applications[0]["decision"] in ("Pending", "Accepted") and row["owner_id"]:
-        add_notification(row["owner_id"], request_id,
-                         f'{request_context.user["username"]} withdrew their offer to help with “{row["title"]}”.')
-    return redirect(f"/requests/{request_id}")
-
-
-def accepted_help_for_user(user_id):
-    return run_query(
-        "SELECT help_requests.id, help_requests.title, help_requests.description, "
-        "help_requests.display_name, help_requests.skill, help_requests.status "
-        "FROM request_helpers JOIN help_requests ON help_requests.id = request_helpers.request_id "
-        "WHERE request_helpers.helper_id = ? AND request_helpers.decision = 'Accepted' "
-        "AND help_requests.status != 'Done' ORDER BY request_helpers.created_at DESC",
-        (user_id,),
-    )
-
-
-def my_help():
-    if not request_context.user:
-        return redirect("/login")
-    content = accepted_help_markup(request_context.user["id"])
-    return page("My help", "my_help.html", safe={"projects": content})
-
-
-def accepted_help_markup(user_id):
-    rows = accepted_help_for_user(user_id)
-    if rows:
-        cards = []
-        for row in rows:
-            cards.append(
-                '<article class="my-help-card"><p class="eyebrow">YOU’RE HELPING</p>'
-                f'<h2><a href="/requests/{int(row["id"])}">{html.escape(row["title"])}</a></h2>'
-                f'<p>Requested by {html.escape(row["display_name"])} · {html.escape(row["skill"])}</p>'
-                f'<p class="my-help-preview">{html.escape(row["description"][:220])}</p>'
-                f'<a class="button" href="/requests/{int(row["id"])}">Open project</a></article>'
-            )
-        content = "".join(cards)
-    else:
-        content = '<p class="empty">No accepted projects yet.</p>'
-    return content
-
-
-def notifications_page():
-    if not request_context.user:
-        return redirect("/login")
-    rows = run_query("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT 100",
-                     (request_context.user["id"],))
-    items = render_notifications(rows)
-    empty = ('<p class="empty">No updates yet.</p>'
-             if not rows else "")
-    mark_all = ""
-    if unread_notification_count(request_context.user["id"]):
-        mark_all = (
-            f'<form class="notifications-mark-all" method="post" action="/notifications/read">{csrf_input()}'
-            '<input type="hidden" name="all" value="yes">'
-            '<button class="button button-quiet" type="submit">Mark all as read</button></form>'
-        )
-    projects = accepted_help_markup(request_context.user["id"])
-    return page("Updates", "notifications.html",
-                safe={"items": items, "empty_state": empty, "mark_all": mark_all,
-                      "projects": projects, "csrf_input": csrf_input()})
-
-
-def mark_notification_read(form):
-    if not request_context.user:
-        return redirect("/login")
-    if form.get("all") == "yes":
-        run_query("UPDATE notifications SET read_at = CURRENT_TIMESTAMP WHERE user_id = ? AND read_at IS NULL",
-                  (request_context.user["id"],))
-    else:
-        notification_id = form.get("notification_id", "")
-        if notification_id.isdigit():
-            run_query("UPDATE notifications SET read_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?",
-                      (int(notification_id), request_context.user["id"]))
-    return redirect("/notifications")
-
-
-def login_page(message="", username=""):
-    return account_page("Sign in", "login.html", message=message, username=username)
-
-
-def signup_page(message="", email="", username=""):
-    return account_page("Create account", "signup.html", message=message, email=email, username=username)
-
-
-def create_account(form):
-    username = form.get("username", "").strip()
-    email = form.get("email", "").strip().lower()
-    password = form.get("password", "")
-    if not re.fullmatch(r"[a-z0-9._%+-]+@code\.berlin", email):
-        return signup_page("Use an email address ending in @code.berlin.", email, username)
-    if not re.fullmatch(r"[A-Za-z0-9_]{3,30}", username):
-        return signup_page("Choose a username with 3–30 letters, numbers, or underscores.", email, username)
-    if len(password) < 12:
-        return signup_page("Choose a password with at least 12 characters.", email, username)
-    salt, hashed = password_record(password)
-    conn = get_db()
-    try:
-        cursor = conn.execute("INSERT INTO users (username, email, salt, password_hash) VALUES (?, ?, ?, ?)",
-                              (username, email, salt, hashed))
-        conn.commit()
-        request_context.user = {"id": cursor.lastrowid, "username": username}
-        request_context.new_session = True
-        return redirect("/requests")
-    except sqlite3.IntegrityError:
-        return signup_page("That username or email address is already in use.", email, username)
-    finally:
-        conn.close()
-
-
-def sign_in(form):
-    username = form.get("username", "").strip()
-    password = form.get("password", "")
-    rows = run_query("SELECT * FROM users WHERE username = ? COLLATE NOCASE", (username,))
-    if not rows:
-        return login_page("Username or password is incorrect.", username)
-    user = rows[0]
-    _, candidate = password_record(password, user["salt"])
-    if not hmac.compare_digest(candidate, user["password_hash"]):
-        return login_page("Username or password is incorrect.", username)
-    request_context.user = {"id": user["id"], "username": user["username"]}
-    request_context.new_session = True
-    return redirect("/requests")
-
-
-def static_file(filename):
+def static_file(filename):# send a file from static
     if filename not in os.listdir(STATIC):
         return not_found()
     with open(os.path.join(STATIC, filename), "rb") as file:
@@ -852,10 +242,12 @@ def static_file(filename):
     return 200, {"Content-Type": content_type}, body
 
 
+# routing
 def handle_request(method, path, form):
-    parts = path.split("/")  # "/requests/5/edit" -> ["", "requests", "5", "edit"]
+    For /requests/<id>/... we read the id from the URL (a "dynamic route").
+    parts = path.split("/") 
     request_id = None
-    if len(parts) in (3, 4, 5) and parts[1] == "requests" and parts[2].isdigit():
+    if len(parts) in (3, 4) and parts[1] == "requests" and parts[2].isdigit():
         request_id = int(parts[2])
         route = "/requests/<id>" + path[len("/requests/" + parts[2]):]
     elif len(parts) == 3 and parts[1] == "static":
@@ -866,43 +258,14 @@ def handle_request(method, path, form):
     if route == "/":
         if method == "GET":
             return home()
-    elif route == "/favicon.ico":
-        if method == "GET":
-            return static_file("favicon.svg")
     elif route == "/about":
         if method == "GET":
             return about()
-    elif route == "/login":
-        if method == "GET":
-            return login_page()
-        if method == "POST":
-            return sign_in(form)
-    elif route == "/signup":
-        if method == "GET":
-            return signup_page()
-        if method == "POST":
-            return create_account(form)
-    elif route == "/logout":
-        if method == "POST":
-            request_context.logout = True
-            return redirect("/requests")
     elif route == "/requests":
         if method == "GET":
             return list_requests()
         if method == "POST":
             return create_request(form)
-    elif route == "/api/requests":
-        if method == "GET":
-            return requests_api()
-    elif route == "/my-help":
-        if method == "GET":
-            return my_help()
-    elif route == "/notifications":
-        if method == "GET":
-            return notifications_page()
-    elif route == "/notifications/read":
-        if method == "POST":
-            return mark_notification_read(form)
     elif route == "/requests/new":
         if method == "GET":
             return new_request()
@@ -914,23 +277,11 @@ def handle_request(method, path, form):
             return edit_request(request_id)
         if method == "POST":
             return update_request(request_id, form)
-    elif route == "/requests/<id>/archive":
-        if method == "POST":
-            return archive_request(request_id)
     elif route == "/requests/<id>/delete":
         if method == "GET":
             return confirm_delete(request_id)
         if method == "POST":
             return delete_request(request_id)
-    elif route == "/requests/<id>/applications":
-        if method == "POST":
-            return decide_application(request_id, form)
-    elif route == "/requests/<id>/interest":
-        if method == "POST":
-            return offer_help(request_id, form)
-    elif route == "/requests/<id>/interest/withdraw":
-        if method == "POST":
-            return withdraw_help(request_id)
     elif route == "/static/<file>":
         if method == "GET":
             return static_file(parts[2])
@@ -948,87 +299,34 @@ def answer(method, path, form):
                           "Something went wrong with the database. Please try again later.", 500)
 
 
-def same_site_form(headers):
-    host = headers.get("Host", "").lower()
-    source = headers.get("Origin") or headers.get("Referer")
-    if not host or not source:
-        return False
-    parsed = urlsplit(source)
-    return parsed.scheme in ("http", "https") and parsed.netloc.lower() == host
-
-
+# the web server things here
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.respond("GET")
-
     def do_HEAD(self):
         self.respond("HEAD")
-
     def do_POST(self):
         self.respond("POST")
-
     def respond(self, method):
-        path = unquote(urlsplit(self.path).path)  # drop "?..." and decode %20 etc.
-        session = read_session(self.headers.get("Cookie", ""))
-        csrf_cookie = SimpleCookie()
-        try:
-            csrf_cookie.load(self.headers.get("Cookie", ""))
-        except Exception:
-            pass
-        anonymous_csrf = csrf_cookie.get("board_csrf")
-        request_context.user = session
-        request_context.csrf = session["csrf"] if session else (anonymous_csrf.value if anonymous_csrf else secrets.token_urlsafe(24))
-        request_context.new_session = False
-        request_context.logout = False
-        request_context.set_csrf = not session and not anonymous_csrf
-        if method == "POST":
-            if not same_site_form(self.headers):
-                self.send_simple(403, "This form must be submitted from the website.")
-                return
-
+        path = unquote(urlsplit(self.path).path) 
         form = {}
         if method == "POST":
             length = int(self.headers.get("Content-Length", 0))
             body = self.rfile.read(length).decode("utf-8", errors="replace")
             form = {key: values[0] for key, values in parse_qs(body, keep_blank_values=True).items()}
-            csrf_value = session["csrf"] if session else (anonymous_csrf.value if anonymous_csrf else "")
-            if not csrf_value or not secrets.compare_digest(form.get("csrf", ""), csrf_value):
-                self.send_simple(403, "The form expired. Please reload the page and try again.")
-                return
         status, headers, content = answer("GET" if method == "HEAD" else method, path, form)
         self.send_response(status)
         for name, value in headers.items():
             self.send_header(name, value)
-        if request_context.new_session:
-            new_csrf = secrets.token_urlsafe(24)
-            token = signed_session(request_context.user["id"], int(time.time()) + SESSION_SECONDS, new_csrf)
-            self.send_header("Set-Cookie", f"board_session={token}; Path=/; HttpOnly; SameSite=Lax; Max-Age={SESSION_SECONDS}" + ("; Secure" if COOKIE_SECURE else ""))
-            self.send_header("Set-Cookie", f"board_csrf={new_csrf}; Path=/; SameSite=Lax; Max-Age={SESSION_SECONDS}" + ("; Secure" if COOKIE_SECURE else ""))
-        elif request_context.logout:
-            self.send_header("Set-Cookie", "board_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0" + ("; Secure" if COOKIE_SECURE else ""))
-            self.send_header("Set-Cookie", "board_csrf=; Path=/; SameSite=Lax; Max-Age=0" + ("; Secure" if COOKIE_SECURE else ""))
-        elif request_context.set_csrf:
-            self.send_header("Set-Cookie", f"board_csrf={request_context.csrf}; Path=/; SameSite=Lax" + ("; Secure" if COOKIE_SECURE else ""))
         self.send_header("Content-Length", str(len(content)))
         self.end_headers()
         if method != "HEAD":
             self.wfile.write(content)
 
-    def send_simple(self, status, message, extra_headers=None):
-        content = (message + "\n").encode("utf-8")
-        self.send_response(status)
-        self.send_header("Content-Type", "text/plain; charset=utf-8")
-        self.send_header("Content-Length", str(len(content)))
-        for name, value in (extra_headers or {}).items():
-            self.send_header(name, value)
-        self.end_headers()
-        self.wfile.write(content)
-
-
 if __name__ == "__main__":
     init_db()
     server = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
-    print(f"Running on http://127.0.0.1:{PORT} (press Ctrl+C to stop)")
+    print(f"Running on http://localhost:{PORT} (press Ctrl+C to stop)")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

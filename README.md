@@ -1,19 +1,34 @@
-# SoMe Incubator board
+# CODE SoMe incubator (scocial media incubator)
 
-A small board for asking for help with editing, filming, design, copywriting or feedback. The live board is at [some.code-alumni.de](https://some.code-alumni.de).
+A small website where CODE students can ask each other for help creating content:
+editing, filming, design, copywriting or feedback.
 
-## Run it locally
+Visit the board at [some.code-alumni.de](https://some.code-alumni.de).
 
-```sh
-python3 app.py
-```
 
-Open http://127.0.0.1:5001. The app uses Python's standard library and creates a local SQLite file called `board.db` when it starts.
+## Join
 
-## Using the board
+Create an account using your CODE email address. Choose a username and password (remember your password cuz there is no password restore yet). You can still see requests without signing in BUT you’ll need an account to post or apply to help.
 
-Anyone can browse. Sign up with a `@code.berlin` email if you want to post or offer help. When you apply, you agree to share your email with the person who posted the request. They can accept or decline your offer.
+## Ask for help
 
-You can edit your own requests or delete them while they're open. When the work is done, mark the request **Done**. **Throw this receipt in the bin** takes it off the board. You can still open it from Updates.
+1. Choose **Post a request**.
+2. Write a short title and describe the help you need.
+3. Choose a topic and post your request.
+4. Review the applications you receive. When someone applies, you can accept or decline. Their CODE email is shown to you so you can contact them about helping.
+5. When the request is finished, mark it **Done**. You can then choose **Throw this receipt in the bin** to hide it from the request board. It stays saved and its updates remain available.
 
-Updates stay in the app. If someone accepts your offer, the request also shows up under **My help**. Keep sensitive details out of request posts since anyone can read them.
+You can edit your own requests. You can delete a request while it’s open. Requests can be read by everyone, so please don’t include private information.
+
+## Offer help
+
+1. Browse or search the requests.
+2. Open one you’d like to help with.
+3. Choose **Apply to help** and check the box agreeing to share your CODE email with the requester.
+4. Check **Updates** for the requester’s decision. If they accept, you’ll find the project under **My help**.
+
+You can withdraw your application from the request page.
+
+## Updates
+
+**Updates** shows your notifications and updates about requests you applied to. Accepted projects appear there under **My help**. The webpage does not send email notification!!!
