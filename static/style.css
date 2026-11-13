@@ -208,80 +208,19 @@ h1 {
     border: 1px solid #aaa;
     border-radius: 6px;
 }
-
-.errors {
-    background-color: #fde8e7;
-    border: 1px solid #b3261e;
-    border-radius: 6px;
-    padding: 8px 16px;
-    margin-bottom: 16px;
-    color: #8c1d17;
-}
+    .errors {
+        background-color: #fde8e7;
+        border: 1px solid #b3261e;
+        border-radius: 6px;
+        padding: 8px 16px;
+        margin-bottom: 16px;
+        color: #8c1d17;
+                }
 
 /* about page */
 .about {
     display: grid;
-    gap: 16px;
-}
-
+    gap: 16px;}
 .about h2 {
     margin-top: 0;
-    font-size: 1.2rem;
-}
-
-/* tablets and bigger phones */
-@media (min-width: 640px) {
-    .site-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-   .logo{ margin-bottom: 0; }
-    nav a {
-        margin-right: 0;
-        margin-left: 18px;
-    }
-
-    .cards
-    {
-      grid-template-columns: 1fr 1fr; }
-
-    .row {
-        display: flex;
-        gap: 16px;
-    }
-
-    .row > div {
-        flex: 1;
-    }
-
-    main {
-        padding: 24px;
-    }
-}
-
-@media (min-width: 1000px) {
-    h1 {
-        font-size: 2rem;
-    }
-
-    .site-header {
-        padding: 16px 40px;
-    }
-
-    .cards {
-        grid-template-columns: 1fr 1fr 1fr;
-    }
-
-    .about {
-        grid-template-columns: 1fr 1fr 1fr;
-    }
-
-    .detail,
-    .form,
-    .confirm {
-        max-width: 720px;
-        padding: 32px;
-    }
-}
+     font-size: 1.2rem;}
