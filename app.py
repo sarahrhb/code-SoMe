@@ -138,9 +138,9 @@ def check_form(form):
     if not data["title"]:
         errors.append("Title: write a short title for the request.")
     if len(data["title"]) > 100:
-        errors.append("Title: keep it under 100 characters.")
+        errors.append("Title: keep it under 100 characters, no one wants to read an article here")
     if not data["description"]:
-        errors.append("Description: describe the help you need.")
+        errors.append("Description: describe the help you need. Remember, keep it short, not like a job description.")
     if data["skill"] not in SKILLS:
         errors.append("Kind of help: choose one of the listed topics.")
     if data["status"] not in STATUSES:
@@ -303,7 +303,7 @@ def render_form(data, errors=None, request_id=None, status=200):
         ),
         "form_note": (
             "Only your account can edit this request. You can delete it while it’s open."
-            if editing else "Only your account can edit this request after you post it."
+            if editing else "Only you can edit this after you post it."
         ),
     }
     return page(title, "form.html", status, safe,
@@ -413,7 +413,7 @@ def show_request(request_id):
     helpers_html = ""
     archived = bool(row["archived_at"])
     if archived:
-        help_action = '<p class="archived-note">This request was put in the bin. It is no longer on the request board.</p>'
+        help_action = '<p class="archived-note">This request was put in the bin.</p>'
     elif request_context.user and row["owner_id"] == request_context.user["id"]:
         delete_action = (f'<a class="button button-danger" href="/requests/{row["id"]}/delete">Delete</a>'
                          if row["status"] != "Done" else "")
@@ -462,13 +462,13 @@ def show_request(request_id):
                 )
             helpers_html = (
                 '<section class="helper-list"><p class="eyebrow">HELP APPLICATIONS</p>'
-                '<p>Applicants’ CODE emails are shown only to you. Accept or decline each application.</p><ul>'
+                '<p>Applicants’ CODE emails are shown only to you.</p><ul>'
                 + "".join(helper_rows) + "</ul></section>"
             )
         else:
             helpers_html = (
                 '<section class="helper-list"><p class="eyebrow">HELP APPLICATIONS</p>'
-                '<p>No pending applications or accepted helpers yet.</p></section>'
+                '<p>No applications or accepted helpers yet. Maybe do some marketing for it! </p></section>'
             )
     elif request_context.user:
         applications = run_query(
@@ -482,7 +482,7 @@ def show_request(request_id):
             elif decision == "Pending":
                 message = "Your application is waiting for a reply. The requester can see your CODE email."
             else:
-                message = "Good news — the requester accepted your help! Find this project in <a href=\"/notifications#my-help\">Updates</a>."
+                message = "Good news! Your help got accepted! Find this project in <a href=\"/notifications#my-help\">Updates</a>."
             help_action = (
                 f'<div class="help-action"><p>{message}</p>'
                 f'<form method="post" action="/requests/{row["id"]}/interest/withdraw">{csrf_input()}'
@@ -490,7 +490,7 @@ def show_request(request_id):
             )
         elif decision in ("Declined", "Closed"):
             if row["status"] != "Done" and row["owner_id"] is not None:
-                message = ("The requester declined this application. You can apply again if you’d still like to help."
+                message = ("Your help got decined. You can apply again if you’d still like to help."
                            if decision == "Declined" else "This request was closed before your application was reviewed. It is open again, so you can apply if you’d still like to help.")
                 help_action = (
                     f'<div class="help-action"><p>{message}</p>'
@@ -503,11 +503,11 @@ def show_request(request_id):
                 message = ("The requester declined this application." if decision == "Declined"
                            else "The request was marked done before your application was reviewed."
                            if row["status"] == "Done" else
-                           "This older request has no active requester, so it cannot receive help applications.")
+                           "This request has no active requester, so it cannot receive help applications.")
                 help_action = f'<p class="help-action">{message}</p>'
         elif row["status"] != "Done":
             if row["owner_id"] is None:
-                help_action = '<p class="help-action">This older request has no active requester, so it cannot receive help applications.</p>'
+                help_action = '<p class="help-action">This request has no active requester, so it cannot receive help applications.</p>'
             else:
                 user_rows = run_query("SELECT email FROM users WHERE id = ?", (request_context.user["id"],))
                 has_email = bool(user_rows and user_rows[0]["email"])
@@ -522,7 +522,7 @@ def show_request(request_id):
                 else:
                     help_action = '<p class="help-action">Your account has no email address saved, so you cannot apply to help.</p>'
     elif not request_context.user and row["status"] != "Done" and row["owner_id"] is not None:
-        help_action = '<p class="help-action"><a href="/login">Sign in</a> to apply to help. Your CODE email will be shared with the request owner for their decision.</p>'
+        help_action = '<p class="help-action"><a href="/login">Sign in</a> to apply to help. Your CODE email will be shared with the request owner for them to contact you.</p>'
     detail_class = "completed-request" if row["status"] == "Done" else "open-request"
     receipt_control = ""
     if row["status"] == "Done" and not archived and request_context.user and row["owner_id"] == request_context.user["id"]:
@@ -651,7 +651,7 @@ def offer_help(request_id, form):
     if row["owner_id"] == request_context.user["id"]:
         return error_page("This is your request", "You cannot offer help on your own request.", 400)
     if row["owner_id"] is None:
-        return error_page("Requester unavailable", "This older request has no active requester, so it cannot receive help applications.", 400)
+        return error_page("Requester unavailable", "This request has no active requester, so it cannot receive help applications.", 400)
     if form.get("share_email") != "yes":
         return error_page("Please confirm email sharing", "Check the box to agree to share your CODE email with the requester before applying.", 400)
     if row["status"] == "Done":
@@ -757,7 +757,7 @@ def accepted_help_markup(user_id):
             )
         content = "".join(cards)
     else:
-        content = '<p class="empty">No accepted projects yet. When someone accepts your offer, you’ll find it here.</p>'
+        content = '<p class="empty">No accepted projects yet.</p>'
     return content
 
 
@@ -767,7 +767,7 @@ def notifications_page():
     rows = run_query("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT 100",
                      (request_context.user["id"],))
     items = render_notifications(rows)
-    empty = ('<p class="empty">No updates yet. Applications and replies about your requests will show here.</p>'
+    empty = ('<p class="empty">No updates yet.</p>'
              if not rows else "")
     mark_all = ""
     if unread_notification_count(request_context.user["id"]):
@@ -984,7 +984,7 @@ class Handler(BaseHTTPRequestHandler):
         request_context.set_csrf = not session and not anonymous_csrf
         if method == "POST":
             if not same_site_form(self.headers):
-                self.send_simple(403, "This form must be submitted from the board website.")
+                self.send_simple(403, "This form must be submitted from the website.")
                 return
 
         form = {}
