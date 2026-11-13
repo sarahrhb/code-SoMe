@@ -136,17 +136,17 @@ def check_form(form):
     }
     errors = []
     if not data["title"]:
-        errors.append("Please write a title.")
+        errors.append("Title: write a short title for the request.")
     if len(data["title"]) > 100:
-        errors.append("The title can be at most 100 characters.")
+        errors.append("Title: keep it under 100 characters.")
     if not data["description"]:
-        errors.append("Please write a description.")
+        errors.append("Description: describe the help you need.")
     if data["skill"] not in SKILLS:
-        errors.append("Please choose a skill from the list.")
+        errors.append("Kind of help: choose one of the listed topics.")
     if data["status"] not in STATUSES:
-        errors.append("Please choose a status from the list.")
+        errors.append("Request status: choose Open or Done.")
     if data["content_link"] and not data["content_link"].startswith(("http://", "https://")):
-        errors.append("The link must start with http:// or https://")
+        errors.append("Content link: use an address starting with http:// or https://.")
     return data, errors
 
 
@@ -281,7 +281,7 @@ def render_form(data, errors=None, request_id=None, status=200):
         errors_html = render("errors.html", safe={"items": items})
     if editing:
         title = "Edit request"
-        heading = f"Edit request #{request_id}"
+        heading = "Edit request"
         action = f"/requests/{request_id}/edit"
         button_text = "Save changes"
         cancel_url = f"/requests/{request_id}"
@@ -294,7 +294,17 @@ def render_form(data, errors=None, request_id=None, status=200):
         "errors": errors_html,
         "csrf_input": csrf_input(),
         "skill_options": make_options(SKILLS, data["skill"]),
-        "status_options": make_options(STATUSES, data["status"]),
+        "status_control": (
+            '<div><label for="status">Request status</label>'
+            '<select id="status" name="status">'
+            + make_options(STATUSES, data["status"]) + '</select></div>'
+            if editing else
+            '<p class="status-note">New requests start Open. Mark yours Done when the help is complete.</p>'
+        ),
+        "form_note": (
+            "Only your account can edit this request. You can delete it while it’s open."
+            if editing else "Only your account can edit this request after you post it."
+        ),
     }
     return page(title, "form.html", status, safe,
                 heading=heading, action=action, button_text=button_text,
@@ -322,10 +332,13 @@ def list_requests():
                             f'<strong>You have {unread_count} new {label}.</strong> '
                             '<a href="/notifications">See your updates</a></aside>')
     if not rows:
-        empty = '<p class="empty">No requests yet. Be the first to ask for help!</p>'
+        empty = ('<p class="empty">No one has asked for help yet. '
+                 '<a href="/requests/new">Ask the community for help</a> to start the board.</p>')
+        account_message = ("You’re signed in. Post a request or apply to help."
+                           if request_context.user else
+                           "Everyone can browse. Sign in to post or apply to help.")
         return page("Requests", "list.html", safe={"cards": empty, "notification": notification},
-                    account_message=("Post a request or offer to help."
-                                     if request_context.user else "Everyone can read requests. Sign in to post your own."))
+                    account_message=account_message)
     cards = []
     for row in rows:
         description_preview = row["description"].strip()
@@ -336,12 +349,15 @@ def list_requests():
                             status_class=status_class(row["status"]),
                             display_name=row["display_name"],
                             description_preview=description_preview,
+                            search_text=row["description"],
                             author_initial=row["display_name"][:1].upper(),
                             card_class="done-card" if row["status"] == "Done" else ""))
     cards_html = '<ul class="cards">\n' + "\n".join(cards) + "\n</ul>"
+    account_message = ("You’re signed in. Post a request or apply to help."
+                       if request_context.user else
+                       "Everyone can browse. Sign in to post or apply to help.")
     return page("Requests", "list.html", safe={"cards": cards_html, "notification": notification},
-                account_message=("Post a request or offer to help."
-                                 if request_context.user else "Everyone can read requests. Sign in to post your own."))
+                account_message=account_message)
 
 
 def requests_api():
@@ -354,7 +370,7 @@ def requests_api():
         "skills": SKILLS,
         "statuses": STATUSES,
     }
-    return 200, {"Content-Type": "application/json; charset=utf-8"}, json.dumps(data, ensure_ascii=False).encode("utf-8")
+    return 200, {"Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store"}, json.dumps(data, ensure_ascii=False).encode("utf-8")
 
 
 def new_request():
@@ -751,7 +767,8 @@ def notifications_page():
     rows = run_query("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT 100",
                      (request_context.user["id"],))
     items = render_notifications(rows)
-    empty = '<p class="empty">You don’t have any updates yet.</p>' if not rows else ""
+    empty = ('<p class="empty">No updates yet. Applications and replies about your requests will show here.</p>'
+             if not rows else "")
     mark_all = ""
     if unread_notification_count(request_context.user["id"]):
         mark_all = (
@@ -779,12 +796,12 @@ def mark_notification_read(form):
     return redirect("/notifications")
 
 
-def login_page(message=""):
-    return account_page("Sign in", "login.html", message=message)
+def login_page(message="", username=""):
+    return account_page("Sign in", "login.html", message=message, username=username)
 
 
-def signup_page(message=""):
-    return account_page("Create account", "signup.html", message=message)
+def signup_page(message="", email="", username=""):
+    return account_page("Create account", "signup.html", message=message, email=email, username=username)
 
 
 def create_account(form):
@@ -792,11 +809,11 @@ def create_account(form):
     email = form.get("email", "").strip().lower()
     password = form.get("password", "")
     if not re.fullmatch(r"[a-z0-9._%+-]+@code\.berlin", email):
-        return signup_page("Use an email address ending in @code.berlin.")
+        return signup_page("Use an email address ending in @code.berlin.", email, username)
     if not re.fullmatch(r"[A-Za-z0-9_]{3,30}", username):
-        return signup_page("Choose a username with 3–30 letters, numbers, or underscores.")
+        return signup_page("Choose a username with 3–30 letters, numbers, or underscores.", email, username)
     if len(password) < 12:
-        return signup_page("Choose a password with at least 12 characters.")
+        return signup_page("Choose a password with at least 12 characters.", email, username)
     salt, hashed = password_record(password)
     conn = get_db()
     try:
@@ -807,7 +824,7 @@ def create_account(form):
         request_context.new_session = True
         return redirect("/requests")
     except sqlite3.IntegrityError:
-        return signup_page("That username or email address is already in use.")
+        return signup_page("That username or email address is already in use.", email, username)
     finally:
         conn.close()
 
@@ -817,11 +834,11 @@ def sign_in(form):
     password = form.get("password", "")
     rows = run_query("SELECT * FROM users WHERE username = ? COLLATE NOCASE", (username,))
     if not rows:
-        return login_page("Username or password is incorrect.")
+        return login_page("Username or password is incorrect.", username)
     user = rows[0]
     _, candidate = password_record(password, user["salt"])
     if not hmac.compare_digest(candidate, user["password_hash"]):
-        return login_page("Username or password is incorrect.")
+        return login_page("Username or password is incorrect.", username)
     request_context.user = {"id": user["id"], "username": user["username"]}
     request_context.new_session = True
     return redirect("/requests")
