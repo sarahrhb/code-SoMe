@@ -18,7 +18,7 @@ Create an account using your CODE email address. Choose a username and password 
 4. Review the applications you receive. When someone applies, you can accept or decline. Their CODE email is shown to you so you can contact them about helping.
 5. When the request is finished, mark it **Done**. You can then choose **Throw this receipt in the bin** to hide it from the request board. It stays saved and its updates remain available.
 
-You can edit your own requests. You can delete a request while it’s open. Requests can be read by everyone, so please don’t include private information.
+Requests can be read by everyone, so please don’t include private information.
 
 ## Offer help
 
