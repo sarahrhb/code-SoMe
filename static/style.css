@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono&family=DM+Sans:wght@400;500;600;700&display=swap');
 
 /* the colors have arrived and they are not being subtle */
+/* colors used below */
 :root {color-scheme: dark;
       --night: #111215;
   --panel: #191a20;
@@ -44,6 +45,7 @@ select:focus-visible {
   display: none !important;
 }
 /* the bit everyone scrolls past */
+/* top navigation */
 .site-header {
   min-height: 84px;
   padding: 16px 6vw;
@@ -263,6 +265,7 @@ main > h1 {
 
 
 
+/* search and dropdown layout */
 .filter-fields {
       display: grid;
   grid-template-columns: minmax(220px, 1.6fr) minmax(145px, 1fr) minmax(145px, 1fr);
@@ -383,6 +386,7 @@ main > h1 {
       color: var(--lime);
 }
 /* a group project where everybody actually shows up */
+/* the card grid */
 .cards {
    margin: 0;
       padding: 0;
@@ -393,6 +397,7 @@ main > h1 {
     gap: 14px;
    list-style: none;
 }
+/* one request card */
 .card {
     position: relative;
    min-height: 300px;
@@ -599,6 +604,7 @@ main > h1 {
     margin-left: auto;
 }
 /* finished work gets the fancy little receipt */
+/* a finished request */
 .done-card {
   position: relative;
     margin: 0;
@@ -1055,6 +1061,7 @@ main > h1 {
   margin-top: 28px;
 }
 
+/* new and edit forms */
 .form,
 .confirm,
 .about section {
@@ -1153,6 +1160,7 @@ body > main > p {
   margin-top: 8px;
 }
 /* small screen, same amount of drama */
+/* layout for smaller screens */
 @media (max-width: 760px) {
   .site-header {
   align-items: flex-start;

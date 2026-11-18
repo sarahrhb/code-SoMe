@@ -19,37 +19,53 @@ class BoardTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         app.DATABASE = str(Path(self.temp.name) / "board.db")
-        app.init_db()
+        app.setup()
 
     def test_api_and_server_html_use_same_records(self):
         title = '<img src=x onerror="alert(1)"> Café'
-        status, _, _ = app.answer("POST", "/requests", {
+        status, _, _ = app.reply("POST", "/requests", {
             "title": title, "description": "Filming in Berlin", "display_name": "Sarah",
             "skill": "Filming", "status": "In progress", "content_link": ""})
         self.assertEqual(status, 302)
-        status, headers, body = app.answer("GET", "/api/requests", {})
+        status, headers, body = app.reply("GET", "/api/requests", {})
         self.assertEqual(status, 200)
         self.assertEqual(headers["Content-Type"], "application/json; charset=utf-8")
         rows = json.loads(body)
         self.assertEqual(rows[0]["title"], title)
         self.assertEqual(rows[0]["status"], "In progress")
         self.assertEqual(set(rows[0]), {"id", "title", "description", "display_name", "skill", "status"})
-        status, _, body = app.answer("GET", "/requests", {})
+        status, _, body = app.reply("GET", "/requests", {})
         self.assertEqual(status, 200)
         self.assertIn(b"&lt;img", body)
         self.assertNotIn(b"<img src=x", body)
         self.assertIn(b"board.js?v=7", body)
         self.assertIn(b"request-results", body)
-        self.assertEqual(app.answer("POST", "/api/requests", {})[0], 405)
+        self.assertEqual(app.reply("POST", "/api/requests", {})[0], 405)
 
     def test_empty_and_unavailable_database(self):
-        self.assertEqual(json.loads(app.answer("GET", "/api/requests", {})[2]), [])
-        self.assertIn(b"No requests yet", app.answer("GET", "/requests", {})[2])
+        self.assertEqual(json.loads(app.reply("GET", "/api/requests", {})[2]), [])
+        self.assertIn(b"No requests yet", app.reply("GET", "/requests", {})[2])
         app.DATABASE = str(Path(self.temp.name) / "missing" / "board.db")
-        status, headers, body = app.answer("GET", "/api/requests", {})
+        status, headers, body = app.reply("GET", "/api/requests", {})
         self.assertEqual(status, 500)
         self.assertIn("application/json", headers["Content-Type"])
         self.assertIn("error", json.loads(body))
+
+    def test_request_routes(self):
+        form = {"title": "Need a camera", "description": "A short film", "display_name": "Sarah",
+                "skill": "Filming", "status": "Open", "content_link": "https://example.com"}
+        self.assertEqual(app.reply("GET", "/requests/new", {})[0], 200)
+        self.assertEqual(app.reply("POST", "/requests", form)[0], 302)
+        rid = json.loads(app.reply("GET", "/api/requests", {})[2])[0]["id"]
+        for path in [f"/requests/{rid}", f"/requests/{rid}/edit", f"/requests/{rid}/delete", "/about", "/static/board.js"]:
+            self.assertEqual(app.reply("GET", path, {})[0], 200, path)
+        form["title"] = "Found a camera"
+        self.assertEqual(app.reply("POST", f"/requests/{rid}/edit", form)[0], 302)
+        self.assertIn(b"Found a camera", app.reply("GET", f"/requests/{rid}", {})[2])
+        self.assertEqual(app.reply("POST", f"/requests/{rid}/delete", {})[0], 302)
+        self.assertEqual(app.reply("GET", f"/requests/{rid}", {})[0], 404)
+        app.DATABASE = str(Path(self.temp.name) / "missing" / "board.db")
+        self.assertEqual(app.reply("GET", "/requests", {})[0], 500)
 
     def test_environment_configuration(self):
         result = subprocess.check_output(

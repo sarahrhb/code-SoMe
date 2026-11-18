@@ -1,4 +1,5 @@
 // the part where the browser does some work
+// box = results area, tools = filters, r = one request
 (() => {
        const box = document.getElementById("request-results")
      if (!box) return
@@ -12,6 +13,7 @@
      const msg = document.getElementById("request-feed-message")
       let requests = []
     // another little box
+    // make one html element
 
         function el(tag, cls = "", t = "") {
        const e = document.createElement(tag)
@@ -19,6 +21,7 @@
          e.textContent = t
        return e
       }
+    // make one request card
      function card(r) {
       const item = el("li", "card testimonial-card" + (r.status === "Done" ? " done-card" : ""))
          const tags = el("div", "card-meta")
@@ -54,6 +57,7 @@
        item.append(by)
       return item
        }
+    // filter the list and show the matching cards
     function finishRequests() {
           const word = search.value.trim().toLowerCase()
        const found = requests.filter(r => {
@@ -76,6 +80,7 @@
       count.textContent = found.length + " of " + requests.length + " requests"
        }
     // asking the server for the latest thingy
+    // load the json from the server
       async function getRequests() {
       try {
             const res = await fetch("/api/requests", {headers: {Accept: "application/json"}})
@@ -97,6 +102,7 @@
          msg.hidden = false
       }
        }
+    // update the cards when a filter changes
       search.addEventListener("input", finishRequests)
     skill.addEventListener("change", finishRequests)
         status.addEventListener("change", finishRequests)
