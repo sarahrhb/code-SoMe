@@ -17,7 +17,6 @@
          node.textContent = text
        return node
       }
-        // same card as card.html, just built in the browser
      function makeCard(request) {
       const card = el("li", "card testimonial-card" + (request.status === "Done" ? " done-card" : ""))
          const meta = el("div", "card-meta")
@@ -53,7 +52,6 @@
        card.append(byline)
       return card
        }
-      // all three filters work together
     function renderRequests() {
           const query = search.value.trim().toLowerCase()
        const matching = requests.filter(request => {
@@ -92,7 +90,6 @@
            renderRequests()
          filters.hidden = false
         } catch {
-        // leave the server cards alone if the fetch fails
             message.textContent = "Browser filtering is unavailable. You can still browse the requests below."
          message.hidden = false
       }
