@@ -34,8 +34,7 @@
        const link = el("a", "", request.title)
         link.href = "/requests/" + request.id
       heading.append(link)
-    // love the enthusiasm, but this is not a dissertation
-          const excerpt = request.description.length > 180
+             const excerpt = request.description.length > 180
          ? request.description.slice(0, 177).trimEnd() + "..." : request.description
       card.append(heading, el("p", "request-quote", excerpt))
          const byline = el("div", "card-byline")
