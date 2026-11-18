@@ -79,6 +79,16 @@ margin-top: 8px;}
     }
 
 /* list of request cards */
+[hidden] { display: none !important; }
+.filter-fields { display: flex; flex-wrap: wrap; gap: 16px; }
+.filter-fields > div { flex: 1 1 180px; }
+.filter-fields label { display: block; font-weight: bold; }
+.filter-fields input, .filter-fields select {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 8px;
+    font: inherit;
+}
 .intro {margin-bottom: 20px;}
 
 .cards {

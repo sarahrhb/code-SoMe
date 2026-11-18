@@ -1,4 +1,5 @@
 import html
+import json
 import mimetypes
 import os
 import sqlite3
@@ -7,7 +8,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlsplit
 
 DATABASE = "board.db"
-PORT = 5001
+PORT = int(os.environ.get("PORT", "5001"))
+HOST = os.environ.get("HOST", "0.0.0.0")
 
 # folders next to this file
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -154,8 +156,18 @@ def home():
 
 def about():
     return page("About", "about.html")
+def request_data():
+    return run_query(
+        "SELECT id, title, description, display_name, skill, status "
+        "FROM help_requests ORDER BY id DESC")
+
+def requests_json():
+    body = json.dumps([dict(row) for row in request_data()], ensure_ascii=False)
+    return 200, {"Content-Type": "application/json; charset=utf-8",
+                 "Cache-Control": "no-store"}, body.encode("utf-8")
+
 def list_requests():
-    rows = run_query("SELECT * FROM help_requests ORDER BY id DESC")
+    rows = request_data()
     if not rows:
         empty = '<p class="empty">No requests yet. Be the first to ask for help!</p>'
         return page("Requests", "list.html", safe={"cards": empty})
@@ -259,6 +271,9 @@ def handle_request(method, path, form):
     elif route == "/about":
         if method == "GET":
             return about()
+    elif route == "/api/requests":
+        if method == "GET":
+            return requests_json()
     elif route == "/requests":
         if method == "GET":
             return list_requests()
@@ -293,6 +308,10 @@ def answer(method, path, form):
         return handle_request(method, path, form)
     except sqlite3.Error as error:
         print("Database error:", error)
+        if path == "/api/requests":
+            return (500, {"Content-Type": "application/json; charset=utf-8",
+                          "Cache-Control": "no-store"},
+                    b'{"error":"Could not load requests."}')
         return error_page("Database problem",
                           "Something went wrong with the database. Please try again later.", 500)
 
@@ -323,8 +342,8 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     init_db()
-    server = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
-    print(f"Running on http://localhost:{PORT} (press Ctrl+C to stop)")
+    server = ThreadingHTTPServer((HOST, PORT), Handler)
+    print(f"Running on http://{HOST}:{PORT} (press Ctrl+C to stop)")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

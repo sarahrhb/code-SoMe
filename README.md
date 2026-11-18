@@ -1,34 +1,58 @@
-# CODE SoMe incubator (scocial media incubator)
+# CODE SoMe incubator
 
-A small website where CODE students can ask each other for help creating content:
-editing, filming, design, copywriting or feedback.
+A small website where CODE students can ask each other for help with editing,
+filming, design, copywriting, or feedback.
 
-Visit the board at [some.code-alumni.de](https://some.code-alumni.de).
+## Run locally
 
+Python 3.9 or newer is required. There are no Python package dependencies.
 
-## Join
+```sh
+HOST=127.0.0.1 PORT=5001 python3 app.py
+```
 
-Create an account using your CODE email address. Choose a username and password (remember your password cuz there is no password restore yet). You can still see requests without signing in BUT you’ll need an account to post or apply to help.
+Open http://127.0.0.1:5001/requests. The SQLite database is `board.db` in the
+working directory. Run the app from its project directory.
 
-## Ask for help
+`PORT` defaults to `5001`; `HOST` defaults to `0.0.0.0`. Behind a reverse proxy,
+set `HOST=127.0.0.1` and use the port configured in the proxy.
 
-1. Choose **Post a request**.
-2. Write a short title and describe the help you need.
-3. Choose a topic and post your request.
-4. Review the applications you receive. When someone applies, you can accept or decline. Their CODE email is shown to you so you can contact them about helping.
-5. When the request is finished, mark it **Done**. You can then choose **Throw this receipt in the bin** to hide it from the request board. It stays saved and its updates remain available.
+## Use the board
 
-Requests can be read by everyone, so please don’t include private information.
+Browse requests, post a request with your display name, and open a request to
+edit it, change its status, or delete it. This simplified version does not have
+accounts, applications, or notifications. Anyone can edit or delete a request.
+Do not post private information.
 
-## Offer help
+## Server-side and client-side rendering
 
-1. Browse or search the requests.
-2. Open one you’d like to help with.
-3. Choose **Apply to help** and check the box agreeing to share your CODE email with the requester.
-4. Check **Updates** for the requester’s decision. If they accept, you’ll find the project under **My help**.
+`GET /requests` renders request cards on the server using HTML templates.
+The board stays usable without JavaScript.
 
-You can withdraw your application from the request page.
+`GET /api/requests` returns a JSON array with each request's id, title,
+description, display name, skill, and status, newest first.
+`static/board.js` fetches this route, builds cards with `createElement` and
+`textContent`, and filters requests in the browser by search text, skill, and
+status. Filters can be combined and cleared without reloading the page.
+If loading fails, the server-rendered cards remain visible.
 
-## Updates
+## Checks
 
-**Updates** shows your notifications and updates about requests you applied to. Accepted projects appear there under **My help**. The webpage does not send email notification!!!
+```sh
+python3 -m unittest discover -s tests -v
+node --test tests/board.test.js
+```
+
+The JavaScript tests use a small DOM test double and require Node.js 18 or newer.
+
+## Deployment
+
+Deploy an immutable snapshot of the commit published on `main`, including
+`app.py`, `static/`, and `templates/`. Keep the live `board.db` in place and
+back up the current app and database before switching versions. Restart the
+service after replacing the source files.
+
+The existing server uses `/opt/code-some` and the `codesome` systemd service.
+Its working directory must be `/opt/code-some`; its Python entrypoint must be
+`/opt/code-some/app.py`. Set `PORT` to the reverse proxy's upstream port.
+Deploying this version retains the older account tables but does not use them.

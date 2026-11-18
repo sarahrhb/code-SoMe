@@ -4,4 +4,31 @@
    <a class="button" href="/requests/new">+ Ask for help</a>
 </section>
 
-$cards
+<section id="request-filters" hidden aria-label="Filter requests">
+    <div class="filter-fields">
+        <div>
+            <label for="request-search">Search requests</label>
+            <input type="search" id="request-search" placeholder="Topic, name, or kind of help">
+        </div>
+        <div>
+            <label for="request-skill">Kind of help</label>
+            <select id="request-skill">
+                <option value="">All kinds</option>
+                <option>Editing</option><option>Filming</option><option>Design</option>
+                <option>Copywriting</option><option>Feedback</option><option>Other</option>
+            </select>
+        </div>
+        <div>
+            <label for="request-status">Status</label>
+            <select id="request-status">
+                <option value="">All statuses</option>
+                <option>Open</option><option>In progress</option><option>Done</option>
+            </select>
+        </div>
+    </div>
+    <p id="request-count" aria-live="polite"></p>
+    <button type="button" id="clear-request-filters">Clear filters</button>
+</section>
+<p id="request-feed-message" role="status" hidden></p>
+<div id="request-results">$cards</div>
+<script src="/static/board.js?v=6" defer></script>
