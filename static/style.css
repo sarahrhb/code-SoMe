@@ -1292,3 +1292,54 @@ body > main > p {
   .filter-fields { grid-template-columns: 1fr; }
     .card-byline { flex-wrap: wrap; }
 }
+
+/* less like a form, more like a noticeboard */
+.intro { gap: 11px 35px; border-bottom: 0;
+    padding: 6px 0 12px; margin-bottom: 19px; }
+.intro h1 {
+  max-width: 13ch; font-size: clamp(2.5rem, 6vw, 4.8rem);
+    line-height: .98; overflow-wrap: anywhere;
+}
+.intro p { max-width: 43ch; margin: 13px 0 6px 9px; }
+.intro > .button { transform: rotate(-1.2deg); margin-left: auto; }
+.intro > .button:hover { transform: rotate(0deg) translateY(-2px); }
+
+#request-filters { margin: 21px 0 38px; }
+#request-filters .filter-fields {
+   display: flex; align-items: flex-start;
+  flex-wrap: wrap; gap: 24px 27px;
+}
+.filter-fields > div { min-width: 0; }
+.filter-fields > div:first-child { flex: 1 1 310px; }
+.filter-fields > div:nth-child(2) { flex: 0 1 185px; margin-top: 16px; }
+.filter-fields > div:nth-child(3) { flex: 0 1 165px; margin-top: 4px; }
+#request-filters label {
+  font-family: inherit; font-size: .83rem; font-weight: 400;
+    letter-spacing: 0; text-transform: none;
+}
+#request-filters input, #request-filters select {
+  min-height: 44px; padding: 8px 4px;
+    background: transparent; border: 0;
+  border-bottom: 1px solid #66666b;
+}
+#request-filters input { border-bottom-color: var(--lime); }
+#request-filters select option { background: var(--night); color: var(--ink); }
+#request-count { display: inline-block; margin: 23px 17px 0 5px; }
+#clear-request-filters { margin-top: 13px; font-size: .8rem; }
+
+@media (max-width: 760px) {
+  .intro { gap: 9px 18px; }
+  .intro h1 { font-size: clamp(2.6rem, 10vw, 4rem); max-width: 12ch; }
+    .intro p { flex-basis: 100%; margin-left: 5px; }
+  .intro > .button { margin: 10px 0 0 13px; }
+
+  #request-filters .filter-fields { gap: 17px 24px; }
+  .filter-fields > div:first-child { flex: 1 1 100%; margin-right: 17px; }
+    .filter-fields > div:nth-child(2) { flex: 1 1 125px; margin: 9px 0 0 10px; }
+  .filter-fields > div:nth-child(3) { flex: 1 1 115px; margin-top: 22px; }
+  #request-count { margin-top: 25px; }
+  .cards { gap: 23px; padding: 0 3px; }
+    .card:nth-child(odd) { transform: rotate(-.45deg); }
+  .card:nth-child(even) { transform: rotate(.35deg); }
+  .card:hover, .card:focus-within { transform: none; }
+}
