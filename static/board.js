@@ -1,4 +1,4 @@
-// welcome to the part where the browser does some work
+// the part where the browser does some work
 (() => {
        const results = document.getElementById("request-results")
      if (!results) return
@@ -76,7 +76,7 @@
        }
       count.textContent = matching.length + " of " + requests.length + " requests"
        }
-    // asking the server for the latest gossip
+    // asking the server for the latest thingy
       async function loadRequests() {
       try {
             const response = await fetch("/api/requests", {headers: {Accept: "application/json"}})
@@ -101,7 +101,7 @@
       search.addEventListener("input", renderRequests)
     skill.addEventListener("change", renderRequests)
         status.addEventListener("change", renderRequests)
-    // undo the very specific mood i was in five seconds ago
+    // undo the mood i was in five seconds ago
      document.getElementById("clear-request-filters").addEventListener("click", () => {
       search.value = skill.value = status.value = ""
          renderRequests()
