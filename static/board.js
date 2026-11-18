@@ -1,3 +1,4 @@
+// welcome to the part where the browser does some work
 (() => {
        const results = document.getElementById("request-results")
      if (!results) return
@@ -10,6 +11,7 @@
        const count = document.getElementById("request-count")
      const message = document.getElementById("request-feed-message")
       let requests = []
+    // ikea for html, but the screws are included
 
         function el(tag, className = "", text = "") {
        const node = document.createElement(tag)
@@ -32,6 +34,7 @@
        const link = el("a", "", request.title)
         link.href = "/requests/" + request.id
       heading.append(link)
+    // love the enthusiasm, but this is not a dissertation
           const excerpt = request.description.length > 180
          ? request.description.slice(0, 177).trimEnd() + "..." : request.description
       card.append(heading, el("p", "request-quote", excerpt))
@@ -73,6 +76,7 @@
        }
       count.textContent = matching.length + " of " + requests.length + " requests"
        }
+    // asking the server for the latest gossip
       async function loadRequests() {
       try {
             const response = await fetch("/api/requests", {headers: {Accept: "application/json"}})
@@ -97,6 +101,7 @@
       search.addEventListener("input", renderRequests)
     skill.addEventListener("change", renderRequests)
         status.addEventListener("change", renderRequests)
+    // undo the very specific mood i was in five seconds ago
      document.getElementById("clear-request-filters").addEventListener("click", () => {
       search.value = skill.value = status.value = ""
          renderRequests()

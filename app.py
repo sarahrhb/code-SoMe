@@ -25,6 +25,7 @@ STATUSES = ["Open",    "In progress", "Done"]
 
 
 
+# dear database, it is me again
 def get_db():
     conn = sqlite3.connect(DATABASE)
     conn.row_factory =    sqlite3.Row  # so I can use row["title"]
@@ -32,6 +33,7 @@ def get_db():
 
 
 
+# asking sqlite nicely because yelling did not work
 def  run_query(sql, params=()):
     conn = get_db()
     rows =    conn.execute(sql, params).fetchall()
@@ -63,6 +65,7 @@ def get_request(request_id):
 
 
 
+# vibe check, but with required fields
 def check_form(form):
     data = {
         "title": form.get("title", "").strip(),
@@ -94,6 +97,7 @@ def check_form(form):
 
 
 
+# html is getting dressed
 def render(name, safe=None, **values):
     with open(os.path.join(TEMPLATES, name), encoding="utf-8")    as file:
         template = string.Template(file.read())
@@ -108,6 +112,7 @@ def page(page_title, name, http_status=200, safe=None, **values):
     return http_status, {"Content-Type": "text/html; charset=utf-8"}, body.encode("utf-8")
 
 
+# nothing to see here, keep walking
 def redirect(url):
     return 302, {"Location": url}, b""   # telling the browser to go to another page
 
@@ -121,6 +126,7 @@ def error_page(title,    message, status):
 
 
 
+# it was here a second ago i swear
 def not_found():
     return error_page("Page not found",
                       "This page or request does not exist (maybe it was deleted).", 404)
@@ -135,6 +141,7 @@ def   status_class(status):  # "Open" -> "Done" etc etc
 
 
 
+# so many choices. still no option to go home
 def make_options(choices, chosen):
     options = []
 
@@ -195,6 +202,7 @@ def  request_data():
 
 
 
+# same requests, no outfit
 def requests_json():
     body   = json.dumps([dict(row)    for row in request_data()], ensure_ascii=False)
     return 200, {"Content-Type": "application/json; charset=utf-8",
@@ -202,6 +210,7 @@ def requests_json():
 
 
 
+# the group chat has become a website
 def list_requests():
     rows =    request_data()
     if   not rows:
@@ -227,6 +236,7 @@ def   new_request():
              "content_link": "",   "status": "Open"}
     return render_form(empty)
 #create request
+# another side quest has entered the chat
 def   create_request(form):
     data, errors    = check_form(form)
     if errors:
@@ -269,6 +279,7 @@ def    edit_request(request_id):
     return render_form(row, request_id=request_id)
 
 
+# we all deserve an edit button
 def update_request(request_id, form):
     if get_request(request_id) is None:
         return not_found()
@@ -284,11 +295,13 @@ def update_request(request_id, form):
     return redirect(f"/requests/{request_id}")
 
 
+# are you sure or just hungry
 def    confirm_delete(request_id):# shows a question
     row =  get_request(request_id)
     if row is None:
         return not_found()
     return page("Delete request", "delete.html",   id=row["id"], title=row["title"])
+# gone. unlike my browser tabs
 def delete_request(request_id):
     if    get_request(request_id) is   None:
         return  not_found()
@@ -311,6 +324,7 @@ def   static_file(filename):# send a file from static
 
 
 
+# you go here, you go there, everybody gets a route
 def handle_request(method, path, form):
     # For /requests/<id>/... we read the id from the URL (a "dynamic route").
     parts = path.split("/")
@@ -364,6 +378,7 @@ def handle_request(method, path, form):
 
 
 
+# trying to hold this whole thing together
 def  answer(method, path, form):
     try:
         return handle_request(method,    path, form)
@@ -377,7 +392,7 @@ def  answer(method, path, form):
                           "Something went wrong with the database. Please try again later.", 500)
 
 
-# the web server things here
+# the web server things here. yes this is the whole server
 class Handler(BaseHTTPRequestHandler):
     def    do_GET(self):
         self.respond("GET")

@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono&family=DM+Sans:wght@400;500;600;700&display=swap');
 
+/* the colors have arrived and they are not being subtle */
 :root {color-scheme: dark;
       --night: #111215;
   --panel: #191a20;
@@ -42,6 +43,7 @@ select:focus-visible {
 [hidden] {
   display: none !important;
 }
+/* the bit everyone scrolls past */
 .site-header {
   min-height: 84px;
   padding: 16px 6vw;
@@ -380,6 +382,7 @@ main > h1 {
 .index-label span:first-child {
       color: var(--lime);
 }
+/* a group project where everybody actually shows up */
 .cards {
    margin: 0;
       padding: 0;
@@ -403,6 +406,7 @@ main > h1 {
   transition: transform 180ms ease, border-color 180ms ease;
 }
 
+/* straight lines were getting a bit confident */
 .card:nth-child(4n + 1) {
   transform: rotate(-0.7deg);
 }
@@ -594,6 +598,7 @@ main > h1 {
 .card-byline .card-arrow {
     margin-left: auto;
 }
+/* finished work gets the fancy little receipt */
 .done-card {
   position: relative;
     margin: 0;
@@ -1147,6 +1152,7 @@ body > main > p {
 .about li + li {
   margin-top: 8px;
 }
+/* small screen, same amount of drama */
 @media (max-width: 760px) {
   .site-header {
   align-items: flex-start;
@@ -1304,6 +1310,7 @@ body > main > p {
 .intro > .button { transform: rotate(-1.2deg); margin-left: auto; }
 .intro > .button:hover { transform: rotate(0deg) translateY(-2px); }
 
+/* organised enough to find things. barely */
 #request-filters { margin: 21px 0 38px; }
 #request-filters .filter-fields {
    display: flex; align-items: flex-start;
