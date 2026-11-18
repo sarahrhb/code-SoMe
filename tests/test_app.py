@@ -38,7 +38,7 @@ class BoardTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIn(b"&lt;img", body)
         self.assertNotIn(b"<img src=x", body)
-        self.assertIn(b"board.js?v=6", body)
+        self.assertIn(b"board.js?v=7", body)
         self.assertIn(b"request-results", body)
         self.assertEqual(app.answer("POST", "/api/requests", {})[0], 405)
 

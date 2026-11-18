@@ -177,7 +177,11 @@ def list_requests():
         cards.append(render("card.html", id=row["id"], title=row["title"],
                             skill=row["skill"], status=row["status"],
                             status_class=status_class(row["status"]),
-                            display_name=row["display_name"]))
+                            display_name=row["display_name"],
+                            card_class="done-card" if row["status"] == "Done" else "",
+                            description_preview=(row["description"][:177].rstrip() + "..."
+                                                 if len(row["description"]) > 180 else row["description"]),
+                            author_initial=row["display_name"][:1].upper()))
     cards_html = '<ul class="cards">\n' + "\n".join(cards) + "\n</ul>"
     return page("Requests", "list.html", safe={"cards": cards_html})
 def new_request():

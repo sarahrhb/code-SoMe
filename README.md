@@ -47,8 +47,8 @@ The JavaScript tests use a small DOM test double and require Node.js 18 or newer
 
 ## Deployment
 
-Deploy an immutable snapshot of the commit published on `main`, including
-`app.py`, `static/`, and `templates/`. Keep the live `board.db` in place and
+Use the same commit on `main` and on the server. Upload
+`app.py`, `static/`, and `templates/` together. Keep `board.db` on the server and
 back up the current app and database before switching versions. Restart the
 service after replacing the source files.
 

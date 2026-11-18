@@ -19,6 +19,7 @@ class Element {
     append(...children) { this.children.push(...children); }
     replaceChildren(...children) { this.text = ""; this.children = children; }
     addEventListener(type, callback) { this.listeners[type] = callback; }
+    setAttribute(name, value) { this[name] = value; }
 }
 
 async function board(response) {
@@ -51,7 +52,7 @@ test("loads cards as text and combines search, skill and status filters", async 
     assert.equal(e["request-count"].textContent, "2 of 2 requests");
     assert.ok(e["request-results"].textContent.includes(rows[0].title));
     const card = e["request-results"].children[0].children[0];
-    assert.equal(card.children[3].children[0].href, "/requests/2");
+    assert.equal(card.children[2].children[0].href, "/requests/2");
     e["request-search"].value = " BERLIN ";
     e["request-search"].listeners.input();
     assert.equal(e["request-count"].textContent, "1 of 2 requests");
