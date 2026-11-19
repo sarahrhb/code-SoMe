@@ -1,6 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono&family=DM+Sans:wght@400;500;600;700&display=swap');
 
-/* the colors have arrived and they are not being subtle */
 /* colors used below */
 :root {color-scheme: dark;
       --black: #111215;
@@ -43,7 +42,6 @@ select:focus-visible {
 [hidden] {
   display: none !important;
 }
-/* the bit everyone scrolls past */
 /* top navigation */
 .site-header {
   min-height: 84px;
@@ -183,7 +181,7 @@ main > h1 {
 /* search and dropdown layout */
 .filter-fields {
       display: grid;
-  grid-template-columns: minmax(220px, 1.6fr) minmax(145px, 1fr) minmax(145px, 1fr);
+  grid-template-columns: minmax(200px, 1.6fr) minmax(145px, 1fr) minmax(145px, 1fr);
   align-items: end;
     gap: 12px;
 }
@@ -191,7 +189,7 @@ main > h1 {
 .filters label,
 .form label {
     display: block;
-   margin-bottom: 7px;
+   margin-bottom: 5px;
       color: var(--light-gray);
   font-size: 0.74rem;
   font-weight: 700;
@@ -205,7 +203,6 @@ main > h1 {
 .form input,
 .form textarea,
 .form select {
-    width: 100%;
    padding: 12px 13px;
       border: 1px solid var(--border-gray);
   border-radius: 0;
@@ -240,8 +237,7 @@ main > h1 {
 .filter-fields select {
     min-height: 48px;
 }
-/* a group project where everybody actually shows up */
-/* the card grid */
+/* the card grid6 */
 .cards {
    margin: 0;
       padding: 0;
@@ -266,7 +262,7 @@ main > h1 {
   transition: transform 180ms ease, border-color 180ms ease;
 }
 
-/* straight lines were getting a bit confident */
+/* the fancy motion bo the cards */
 .card:nth-child(4n + 1) {
   transform: rotate(-0.7deg);
 }
@@ -458,7 +454,6 @@ main > h1 {
 .card-bottom .card-link {
     margin-left: auto;
 }
-/* finished work gets the fancy little receipt */
 /* a finished request */
 .done-card {
   position: relative;
@@ -611,7 +606,6 @@ body > main > p {
       display: grid;
 
 
-  gap: 16px;
 }
 
 .about h2 {
@@ -624,75 +618,8 @@ body > main > p {
 .about li + li {
   margin-top: 8px;
 }
-/* small screen, same amount of drama */
-/* layout for smaller screens */
-@media (max-width: 760px) {
-  .site-header {
-  align-items: flex-start;
-    flex-direction: column;
-   gap: 16px;
-      }
+/* The board uses the CODE palette. */
 
-  nav {
-    justify-content: flex-start;
-   gap: 14px;
-      }
-  main {
-    width: min(100% - 36px, 620px);
-   padding-top: 28px;
-      }
-
-  .site-footer {
-    width: min(100% - 36px, 620px);
-   align-items: flex-start;
-      flex-direction: column;
-  }
-
-  .filters {
-    width: 100%;
-   }
-
-  .filter-fields {
-  grid-template-columns: 1fr 1fr;
-    }
-      .form .row {
-  grid-template-columns: 1fr;
-  gap: 8px;
-
-
-    }
-   .cards {
-      grid-template-columns: 1fr;
-  }
-
-    .card {
-   min-height: 270px;
-      padding: 20px;
-  }
-    .card-link {
-   min-height: 44px;
-      padding: 0 10px;
-  font-size: 0.63rem;
-  }
-   .card:nth-child(n) {
-      transform: none;
-  }
-
-    .done-card {
-   padding: 20px;
-      }
-}
-
-@media (prefers-reduced-motion: reduce) {
-   *, *::before, *::after {
-      scroll-behavior: auto !important;
-  animation-duration: 1ms !important;
-  animation-iteration-count: 1 !important;
-    transition-duration: 1ms !important;
-   }
-}
-
-/* The simplified board uses the original incubator cards and CODE palette. */
 .intro {
    display: flex;
 
@@ -735,18 +662,8 @@ body > main > p {
     .card-bottom { flex-wrap: wrap; }
 }
 
-/* less like a form, more like a noticeboard */
-.intro { gap: 11px 35px; border-bottom: 0;
-    padding: 6px 0 12px; margin-bottom: 19px; }
-.intro h1 {
-  max-width: 13ch; font-size: clamp(2.5rem, 6vw, 4.8rem);
-    line-height: .98; overflow-wrap: anywhere;
-}
-.intro p { max-width: 43ch; margin: 13px 0 6px 9px; }
-.intro > .button { transform: rotate(-1.2deg); margin-left: auto; }
-.intro > .button:hover { transform: rotate(0deg) translateY(-2px); }
 
-/* organised enough to find things. barely */
+/* organiseing */
 #request-filters { margin: 21px 0 38px; }
 #request-filters .filter-fields {
    display: flex; align-items: flex-start;
