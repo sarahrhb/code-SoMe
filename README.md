@@ -34,12 +34,6 @@ description, display name, skill, and status, newest first.
 `textContent`, and filters requests in the browser by search text, skill, and
 status.
 
-## Checks
-
-```sh
-python3 -m unittest discover -s tests -v
-node --test tests/board.test.js
-```
 
 ## Deployment
 
