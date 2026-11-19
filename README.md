@@ -3,6 +3,13 @@
 A small website where CODE students can ask each other for help with editing,
 filming, design, copywriting, or feedback.
 
+## Website
+
+[Open the live board](https://some.code-alumni.de/requests)
+
+Pushing to GitHub does not update the website automatically. Deploy the new
+version to the server after pushing.
+
 ## Run locally
 
 Python 3.9 or newer is required. There are no Python package dependencies.
