@@ -38,8 +38,12 @@ class BoardTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIn(b"&lt;img", body)
         self.assertNotIn(b"<img src=x", body)
-        self.assertIn(b"board.js?v=7", body)
+        self.assertIn(b"board.js?v=8", body)
         self.assertIn(b"request-results", body)
+        self.assertNotIn(b"testimonial", body)
+        self.assertIn(b'class="card-text"', body)
+        self.assertIn(b'class="card-bottom"', body)
+        self.assertNotIn(b"$preview", body)
         self.assertEqual(app.reply("POST", "/api/requests", {})[0], 405)
 
     def test_empty_and_unavailable_database(self):

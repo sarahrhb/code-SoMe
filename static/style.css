@@ -63,31 +63,6 @@ select:focus-visible {
    text-decoration: none;
 }
 
-.logo-mark {
-    width: 42px;
-   height: 42px;
-      display: block;
-  flex: 0 0 auto;
-  object-fit: contain;
-    aspect-ratio: 1 / 1;
-}
-
-.logo-copy {
-
-
-  font-size: 1rem;
-    font-weight: 700;
-   letter-spacing: -0.02em;
-}
-
-.logo-copy small {
-    display: block;
-   color: var(--muted);
-      font-size: 0.65rem;
-  font-weight: 400;
-  letter-spacing: 0.04em;
-}
-
 nav {
   display: flex;
   align-items: center;
@@ -110,9 +85,6 @@ nav a:focus-visible {
 
 nav span {
       color: var(--lime);
-}
-.inline-form {
-   display: inline;
 }
 
 nav button {
@@ -156,27 +128,6 @@ main {
 .site-footer span:first-child {
       color: var(--lime);
 }
-.dashboard-head {
-   padding: 8px 0 26px;
-      display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.72fr);
-  align-items: end;
-    gap: 38px;
-   border-bottom: 1px solid var(--line);
-}
-.eyebrow {
-    margin: 0 0 18px;
-   color: var(--lime);
-
-
-      font-size: 0.7rem;
-  font-weight: 700;
-  font-family: "DM Mono", monospace;
-    letter-spacing: 0.16em;
-   text-transform: uppercase;
-}
-
-.dashboard-title h1,
 .detail h1,
 main > h1 {
       max-width: 720px;
@@ -186,27 +137,6 @@ main > h1 {
    font-weight: 500;
       letter-spacing: -0.07em;
   line-height: 0.93;
-}
-
-.dashboard-title h1 {
-      max-width: 620px;
-}
-
-.hero-description {
-   max-width: 420px;
-      margin: 10px 0 0;
-  color: var(--muted);
-  font-size: 0.96rem;
-}
-.account-message {
-
-
-  display: flex;
-  align-items: flex-start;
-    gap: 9px;
-   margin: 0;
-      color: var(--muted);
-  font-size: 0.88rem;
 }
 .button {
       min-height: 48px;
@@ -242,20 +172,6 @@ main > h1 {
 .button-danger:hover {
       border-color: var(--coral);
   color: var(--coral);
-}
-
-.dashboard-tools {
-      display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-    gap: 14px 18px;
-}
-.dashboard-tools .account-message {
-  grid-column: 1 / -1;
-}
-
-.dashboard-tools .button {
-  white-space: nowrap;
 }
 
 .filters {
@@ -306,9 +222,7 @@ main > h1 {
 .form textarea::placeholder {
       color: #77777b;
 }
-
 #request-count,
-.no-matches,
 #request-feed-message {
   margin: 7px 0 0;
   color: var(--muted);
@@ -326,64 +240,6 @@ main > h1 {
 .filter-fields input,
 .filter-fields select {
     min-height: 48px;
-}
-
-
-.board-controls {
-  margin-bottom: 18px;
-    padding: 16px 0 0;
-   border-top: 1px solid var(--line);
-}
-.board-controls .index-label {
-    margin-bottom: 14px;
-}
-
-.no-matches button {
-  margin-left: 8px;
-    padding: 0;
-   border: 0;
-      background: none;
-  color: var(--lime);
-  font: inherit;
-    text-decoration: underline;
-   text-underline-offset: 3px;
-      cursor: pointer;
-}
-
-.no-matches button:hover {
-   color: var(--ink);
-}
-
-.board-empty,
-.no-script-note {
-   padding: 28px 0;
-      color: var(--muted);
-
-
-  font-family: "DM Sans", Arial, Helvetica, sans-serif;
-  font-size: 1.15rem;
-}
-
-.board-empty a {
-  color: var(--lime);
-}
-
-.board-index {
-      margin-top: 20px;
-}
-.index-label {
-   margin: 0 0 10px;
-      display: flex;
-  justify-content: space-between;
-  color: var(--muted);
-    font-size: 0.65rem;
-   font-weight: 700;
-      font-family: "DM Mono", monospace;
-  letter-spacing: 0.15em;
-}
-
-.index-label span:first-child {
-      color: var(--lime);
 }
 /* a group project where everybody actually shows up */
 /* the card grid */
@@ -451,7 +307,7 @@ main > h1 {
   transform: translateY(-2px) rotate(0);
 }
 
-.card-meta {
+.card-top {
   display: flex;
   align-items: center;
     flex-wrap: wrap;
@@ -516,7 +372,7 @@ main > h1 {
     font-weight: 500;
 }
 
-.card-arrow {
+.card-link {
   min-height: 42px;
     padding: 0 11px;
    display: inline-flex;
@@ -533,13 +389,13 @@ main > h1 {
       white-space: nowrap;
 }
 
-.card-arrow span:last-child {
+.card-link span:last-child {
    font-size: 1.35rem;
       font-weight: 400;
   line-height: 1;
 }
 
-.card-arrow:hover {
+.card-link:hover {
       background: var(--lime);
   color: var(--night);
 }
@@ -558,7 +414,7 @@ main > h1 {
 .card:nth-child(5n + 4) .quote-mark { color: var(--rose); }
 .card:nth-child(5n + 5) .quote-mark { color: var(--pumpkin); }
 
-.request-quote {
+.card-text {
     max-width: 62ch;
    margin: 0 0 22px;
       flex: 1;
@@ -568,7 +424,7 @@ main > h1 {
    line-height: 1.55;
 }
 
-.card-byline {
+.card-bottom {
     width: 100%;
    padding-top: 14px;
       display: flex;
@@ -577,7 +433,7 @@ main > h1 {
     border-top: 1px solid var(--line);
 }
 
-.author-mark {
+.initial {
   width: 34px;
 
 
@@ -591,7 +447,7 @@ main > h1 {
       font-family: "DM Mono", monospace;
 }
 
-.card-byline .by small {
+.card-bottom .by small {
    display: block;
       margin-top: 2px;
   color: var(--muted);
@@ -600,7 +456,7 @@ main > h1 {
    text-transform: uppercase;
 }
 
-.card-byline .card-arrow {
+.card-bottom .card-link {
     margin-left: auto;
 }
 /* finished work gets the fancy little receipt */
@@ -628,7 +484,7 @@ main > h1 {
 .done-card .by,
 .done-card .by strong,
 .done-card h2 a,
-.done-card .request-quote {
+.done-card .card-text {
    color: var(--paper-ink);
 }
 
@@ -641,17 +497,17 @@ main > h1 {
     border-color: #aaa18e;
    color: #4d4a41;
 }
-.done-card .card-arrow {
+.done-card .card-link {
     color: #515b2d;
 }
 
 
 
-.done-card .card-byline {
+.done-card .card-bottom {
   border-color: #c5bdac;
 }
 
-.done-card .author-mark {
+.done-card .initial {
   border-color: #aaa18e;
   color: #536329;
 }
@@ -663,19 +519,6 @@ main > h1 {
    font-size: 1.3rem;
 }
 
-.back-link {
-    margin: 0 0 22px;
-   color: var(--muted);
-      font-size: 0.82rem;
-}
-
-.back-link a {
-   text-decoration: none;
-}
-.back-link a:hover {
-    color: var(--lime);
-}
-
 .detail {
   position: relative;
     max-width: 900px;
@@ -683,32 +526,12 @@ main > h1 {
       border: 1px solid var(--line);
   background: var(--panel);
 }
-.detail-heading {
-      display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-    gap: 20px;
-}
-
-.detail-heading .eyebrow {
-  margin-top: 4px;
-}
 
 .detail h1,
 main > h1 {
   margin: 16px 0 18px;
     font-size: clamp(2.6rem, 6vw, 5.5rem);
    line-height: 1;
-}
-.detail-body {
-    margin-top: 44px;
-   padding-top: 20px;
-      border-top: 1px solid var(--line);
-}
-
-
-.detail-body .eyebrow {
-   margin-bottom: 10px;
 }
 
 .description {
@@ -722,335 +545,6 @@ main > h1 {
 
 .detail a:not(.button) {
   overflow-wrap: anywhere;
-}
-
-.detail-body a {
-  color: var(--lime);
-}
-.help-action,
-.helper-list {
-  max-width: 670px;
-  margin-top: 28px;
-    padding: 18px 20px;
-   border: 1px solid var(--line);
-      background: var(--panel-raised);
-}
-.help-action p,
-.helper-list p {
-      margin: 0 0 14px;
-  color: var(--muted);
-  font-size: 0.9rem;
-}
-
-.helper-list .eyebrow {
-  color: var(--lime);
-}
-
-.helper-list ul {
-      margin: 12px 0 0;
-  padding: 0;
-  list-style: none;
-    color: var(--ink);
-}
-.application-row {
-  padding: 14px 0;
-    display: flex;
-   align-items: center;
-      justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-    border-top: 1px solid var(--line);
-}
-
-.application-person {
-  display: grid;
-    grid-template-columns: auto auto;
-
-
-   align-items: center;
-      gap: 3px 10px;
-}
-
-.application-person small {
-   grid-column: 1 / -1;
-      color: var(--muted);
-  font-size: 0.82rem;
-}
-
-.application-status {
-      color: var(--muted);
-  font-size: 0.65rem;
-  font-weight: 700;
-    letter-spacing: 0.08em;
-   text-transform: uppercase;
-}
-
-.application-status.pending {
-    color: var(--coral);
-}
-
-.application-status.accepted {
-  color: var(--mint);
-}
-.application-actions {
-  display: flex;
-  flex-wrap: wrap;
-    gap: 8px;
-}
-
-
-.application-actions form {
-  margin: 0;
-}
-
-.application-button {
-  min-height: 36px;
-  padding: 8px 11px;
-    gap: 8px;
-}
-
-.help-action form {
-  margin: 0;
-}
-
-.consent-check {
-  display: flex;
-  align-items: flex-start;
-    gap: 10px;
-   margin: 14px 0;
-      color: var(--ink);
-  font-size: 0.88rem;
-  line-height: 1.5;
-    cursor: pointer;
-}
-
-.consent-check input {
-  flex: 0 0 auto;
-    width: 18px;
-   height: 18px;
-      margin: 2px 0 0;
-
-
-  accent-color: var(--lime);
-}
-.accepted-notice {
-      margin: 0 0 24px;
-  padding: 16px 20px;
-  border: 1px solid var(--lime);
-    background: var(--panel-raised);
-   color: var(--ink);
-}
-
-.accepted-notice a,
-.my-help-card h2 a {
-   color: var(--lime);
-}
-
-.notification-count {
-    display: inline-grid;
-   min-width: 20px;
-      height: 20px;
-  margin-left: 4px;
-  padding: 0 5px;
-    place-items: center;
-   border-radius: 999px;
-      background: var(--lime);
-  color: var(--night);
-  font-size: 0.72rem;
-    font-weight: 700;
-}
-.notifications-page h1 {
-
-
-  margin: 10px 0 12px;
-    font-size: clamp(2.6rem, 6vw, 5.5rem);
-   line-height: 1;
-}
-.activity-projects {
-    max-width: 850px;
-   margin-top: 56px;
-      padding-top: 28px;
-  border-top: 1px solid var(--line);
-}
-
-.activity-projects h2 {
-      margin: 10px 0 0;
-  font-size: clamp(1.8rem, 4vw, 2.6rem);
-  line-height: 1.1;
-}
-
-.notification-list {
-  max-width: 850px;
-  margin: 32px 0 0;
-    padding: 0;
-   list-style: none;
-}
-
-.notification-item {
-    display: flex;
-   align-items: center;
-      justify-content: space-between;
-  gap: 20px;
-  padding: 20px;
-
-
-    border: 1px solid var(--line);
-   border-bottom: 0;
-      background: var(--panel);
-}
-
-.notification-item:last-child {
-   border-bottom: 1px solid var(--line);
-}
-
-.notification-item.unread {
-    border-left: 3px solid var(--lime);
-   background: var(--panel-raised);
-}
-
-.notification-item p {
-    margin: 0 0 7px;
-}
-
-.notification-item time {
-  color: var(--muted);
-    font-size: 0.76rem;
-}
-
-.notification-actions {
-  display: flex;
-    align-items: center;
-   justify-content: flex-end;
-      flex-wrap: wrap;
-  gap: 12px;
-}
-.notification-actions a {
-      color: var(--lime);
-}
-
-.notification-actions form,
-.notifications-mark-all {
-      margin: 0;
-}
-.notifications-mark-all {
-   max-width: 850px;
-      margin-top: 18px;
-  text-align: right;
-}
-.my-help-page h1 {
-      margin: 10px 0 12px;
-  font-size: clamp(2.6rem, 6vw, 5.5rem);
-  line-height: 1;
-}
-.my-help-projects {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
-    gap: 18px;
-   margin-top: 34px;
-}
-
-.my-help-card {
-    padding: 24px;
-   border: 1px solid var(--line);
-
-
-      background: var(--panel-raised);
-}
-
-.my-help-card h2 {
-   margin: 12px 0;
-}
-
-.my-help-card > p:not(.eyebrow) {
-    color: var(--muted);
-}
-.my-help-preview {
-  white-space: pre-line;
-    overflow-wrap: anywhere;
-}
-
-.button-quiet {
-  border-color: var(--line);
-    background: transparent;
-   color: var(--ink);
-}
-
-.button-quiet:hover {
-    border-color: var(--coral);
-   color: var(--coral);
-}
-
-.completed-request {
-    border: 1px dashed #b9b09d;
-   background: var(--paper);
-      color: var(--paper-ink);
-
-
-  box-shadow: 7px 7px 0 rgb(238 232 217 / 13%);
-}
-
-.completed-request .eyebrow,
-.completed-request .by,
-.completed-request .by strong,
-.completed-request .description {
-    color: #56564e;
-}
-.completed-request .detail-body {
-  border-color: #c5bdac;
-}
-
-.completed-request .detail-body a {
-  color: #536329;
-}
-
-.completed-request .tag {
-      border-color: #aaa18e;
-  color: #4d4a41;
-}
-
-.completed-request .status-done {
-      border-color: #8f896f;
-  color: #5f5b4d;
-}
-.receipt-tools {
-      max-width: 900px;
-  margin-top: 18px;
-
-
-  padding: 18px 20px;
-    border: 1px solid var(--line);
-   background: var(--panel);
-}
-
-.receipt-tools p {
-    margin: 0 0 12px;
-   color: var(--muted);
-}
-
-.receipt-button {
-    padding: 10px 13px;
-   border: 1px solid var(--coral);
-      background: transparent;
-  color: var(--coral);
-  font: inherit;
-    font-family: "DM Mono", monospace;
-   text-transform: uppercase;
-      cursor: pointer;
-}
-.receipt-button:hover {
-   background: var(--coral);
-      color: var(--night);
-}
-
-.archived-note {
-   max-width: 900px;
-      margin: 18px 0;
-  padding: 14px 18px;
-  border-left: 3px solid var(--lime);
-
-
-    background: var(--panel);
-   color: var(--lime);
 }
 
 .actions {
@@ -1091,19 +585,6 @@ main > h1 {
   gap: 16px;
 }
 
-.field-help {
-  margin: 7px 0 0;
-  color: var(--muted);
-    font-size: 0.82rem;
-}
-
-.status-note {
-  align-self: end;
-    margin: 0 0 12px;
-   color: var(--muted);
-      font-size: 0.84rem;
-}
-
 .form p,
 .confirm p,
 .about p,
@@ -1116,21 +597,6 @@ body > main > p {
 
 .form .button {
   margin-top: 20px;
-}
-
-.form-note {
-  color: var(--muted);
-  font-size: 0.82rem;
-}
-
-.form-feedback {
-  max-width: 850px;
-  margin: 12px 0;
-    color: var(--coral);
-}
-
-.form-feedback:empty {
-  display: none;
 }
 
 .errors {
@@ -1183,19 +649,6 @@ body > main > p {
       flex-direction: column;
   }
 
-    .dashboard-head {
-   grid-template-columns: 1fr;
-      gap: 22px;
-  }
-
-    .dashboard-title h1 {
-   font-size: clamp(2.2rem, 9vw, 3.2rem);
-      line-height: 0.98;
-  }
-    .dashboard-tools {
-   grid-template-columns: 1fr auto;
-      }
-
   .filters {
     width: 100%;
    }
@@ -1209,10 +662,6 @@ body > main > p {
 
 
     }
-
-      .filter-control:first-child {
-  grid-column: 1 / -1;
-  }
    .cards {
       grid-template-columns: 1fr;
   }
@@ -1221,7 +670,7 @@ body > main > p {
    min-height: 270px;
       padding: 20px;
   }
-    .card-arrow {
+    .card-link {
    min-height: 44px;
       padding: 0 10px;
   font-size: 0.63rem;
@@ -1232,26 +681,6 @@ body > main > p {
 
     .done-card {
    padding: 20px;
-      }
-
-  .detail-heading {
-    flex-direction: column;
-
-
-   gap: 0;
-      }
-
-  .receipt-tools {
-    align-items: flex-start;
-   flex-wrap: wrap;
-      }
-  .notification-item {
-    align-items: flex-start;
-   flex-direction: column;
-      gap: 12px;
-  }
-    .notification-actions {
-   justify-content: flex-start;
       }
 }
 
@@ -1298,13 +727,13 @@ body > main > p {
   cursor: pointer;
 }
 .status-in-progress { border-color: var(--pumpkin); color: var(--pumpkin); }
-.card-byline .by { min-width: 0; overflow-wrap: anywhere; }
+.card-bottom .by { min-width: 0; overflow-wrap: anywhere; }
 .site-footer p { margin: 0; }
 
 
 @media (max-width: 760px) {
   .filter-fields { grid-template-columns: 1fr; }
-    .card-byline { flex-wrap: wrap; }
+    .card-bottom { flex-wrap: wrap; }
 }
 
 /* less like a form, more like a noticeboard */

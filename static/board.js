@@ -21,8 +21,8 @@
       }
     // make one request card
      function card(r) {
-      const item = el("li", "card testimonial-card" + (r.status === "Done" ? " done-card" : ""))
-         const tags = el("div", "card-meta")
+      const item = el("li", "card" + (r.status === "Done" ? " done-card" : ""))
+         const tags = el("div", "card-top")
        tags.append(el("span", "tag", r.skill))
 
 
@@ -37,13 +37,13 @@
       h.append(a)
              const desc = r.description.length > 180
          ? r.description.slice(0, 177).trimEnd() + "..." : r.description
-      item.append(h, el("p", "request-quote", desc))
-         const by = el("div", "card-byline")
-       const first = el("span", "author-mark", r.display_name.slice(0, 1).toUpperCase())
+      item.append(h, el("p", "card-text", desc))
+         const by = el("div", "card-bottom")
+       const first = el("span", "initial", r.display_name.slice(0, 1).toUpperCase())
         first.setAttribute("aria-hidden", "true")
       const name = el("p", "by")
           name.append(document.createTextNode("By "), el("strong", "", r.display_name))
-       const open = el("a", "card-arrow")
+       const open = el("a", "card-link")
       open.href = "/requests/" + r.id
 
 

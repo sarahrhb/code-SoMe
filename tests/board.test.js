@@ -53,6 +53,11 @@ test("loads cards as text and combines search, skill and status filters", async 
     assert.ok(e["request-results"].textContent.includes(rows[0].title));
     const card = e["request-results"].children[0].children[0];
     assert.equal(card.children[2].children[0].href, "/requests/2");
+    assert.equal(card.className, "card");
+    assert.equal(card.children[0].className, "card-top");
+    assert.equal(card.children[3].className, "card-text");
+    assert.equal(card.children[4].className, "card-bottom");
+    assert.equal(e["request-results"].children[0].children[1].className, "card done-card");
     e["request-search"].value = " BERLIN ";
     e["request-search"].listeners.input();
     assert.equal(e["request-count"].textContent, "1 of 2 requests");

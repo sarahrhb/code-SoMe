@@ -239,12 +239,12 @@ def board():
     for row in  rows:
         cards.append(fill("card.html", id=row["id"], title=row["title"],
                             skill=row["skill"], status=row["status"],
-                            status_class=status_css(row["status"]),
+                            status_css=status_css(row["status"]),
                             display_name=row["display_name"],
-                            card_class="done-card" if    row["status"] ==   "Done" else "",
-                            description_preview=(row["description"][:177].rstrip()  + "..."
+                            done="done-card" if    row["status"] ==   "Done" else "",
+                            preview=(row["description"][:177].rstrip()  + "..."
                                                  if len(row["description"]) > 180 else row["description"]),
-                            author_initial=row["display_name"][:1].upper()))
+                            initial=row["display_name"][:1].upper()))
     cards_html   = '<ul class="cards">\n' + "\n".join(cards) +    "\n</ul>"
     return page("Requests", "list.html", safe={"cards": cards_html})
 
@@ -287,7 +287,7 @@ def show(rid):
         link_html = f'<p>Content link: <a href="{link}" rel="noopener nofollow">{link}</a></p>'
     return page(row["title"],   "detail.html", safe={"link": link_html},
                 id=row["id"], title=row["title"],    skill=row["skill"],
-                status=row["status"],    status_class=status_css(row["status"]),
+                status=row["status"],    status_css=status_css(row["status"]),
                 display_name=row["display_name"], description=row["description"])
 #edit request
 
