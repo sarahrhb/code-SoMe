@@ -1,4 +1,3 @@
-// the part where the browser does some work
 // box = results, tools = filters, r = one request
 (() => {
        const box = document.getElementById("request-results")
