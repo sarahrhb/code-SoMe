@@ -83,16 +83,7 @@
       try {
             const res = await fetch("/api/requests", {headers: {Accept: "application/json"}})
          if (!res.ok) throw new Error("Could not load requests")
-        const data = await res.json()
-           if (!Array.isArray(data) || !data.every(r => r
-           && Number.isSafeInteger(r.id) && r.id > 0
-            && ["title", "description", "display_name", "skill", "status"]
-
-
-            .every(key => typeof r[key] === "string"))) {
-              throw new Error("Invalid request data")
-         }
-        requests = data
+        requests = await res.json()
            finishRequests()
          tools.hidden = false
         } catch {

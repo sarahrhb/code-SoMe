@@ -412,10 +412,6 @@ def  reply(method, path, form):
         return go(method,    path, form)
     except sqlite3.Error  as error:
         print("Database error:", error)
-        if path ==  "/api/requests":
-            return    (500, {"Content-Type": "application/json; charset=utf-8",
-                          "Cache-Control": "no-store"},
-                    b'{"error":"Could not load requests."}')
         return   oops("Database problem",
                           "Something went wrong with the database. Please try again later.", 500)
 

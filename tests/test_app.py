@@ -52,8 +52,8 @@ class BoardTests(unittest.TestCase):
         app.DATABASE = str(Path(self.temp.name) / "missing" / "board.db")
         status, headers, body = app.reply("GET", "/api/requests", {})
         self.assertEqual(status, 500)
-        self.assertIn("application/json", headers["Content-Type"])
-        self.assertIn("error", json.loads(body))
+        self.assertIn("text/html", headers["Content-Type"])
+        self.assertIn(b"Database problem", body)
 
     def test_request_routes(self):
         form = {"title": "Need a camera", "description": "A short film", "display_name": "Sarah",
