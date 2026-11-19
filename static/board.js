@@ -1,5 +1,5 @@
 // the part where the browser does some work
-// box = results area, tools = filters, r = one request
+// box = results, tools = filters, r = one request
 (() => {
        const box = document.getElementById("request-results")
      if (!box) return
@@ -12,8 +12,6 @@
        const count = document.getElementById("request-count")
      const msg = document.getElementById("request-feed-message")
       let requests = []
-    // another little box
-    // make one html element
 
         function el(tag, cls = "", t = "") {
        const e = document.createElement(tag)
