@@ -25,8 +25,6 @@ STATUSES = ["Open",    "In progress", "Done"]
 
 
 
-# dear database, it is me again
-# open the database
 def db():
     c = sqlite3.connect(DATABASE)
     c.row_factory =    sqlite3.Row  # so I can use row["title"]
@@ -34,7 +32,6 @@ def db():
 
 
 
-# asking sqlite nicely because yelling did not work
 # run sql and return the rows
 def  query(sql, params=()):
     c = db()
@@ -69,7 +66,6 @@ def find(rid):
 
 
 
-# vibe check, but with required fields
 # check the form fields
 def check(form):
     data = {
@@ -102,7 +98,6 @@ def check(form):
 
 
 
-# html is getting dressed
 # put values into an html file
 def fill(name, safe=None, **values):
     with open(os.path.join(HTML, name), encoding="utf-8")    as file:
@@ -120,7 +115,6 @@ def page(page_title, name, code=200, safe=None, **values):
 
 
 # nothing to see here, keep walking
-# send the browser to another url
 def redirect(url):
     return 302, {"Location": url}, b""   # telling the browser to go to another page
 
@@ -135,7 +129,6 @@ def oops(title,    message, status):
 
 
 
-# it was here a second ago i swear
 # the 404 page
 def missing():
     return oops("Page not found",
@@ -144,7 +137,6 @@ def missing():
 
 
 
-# turn a status into a css class
 def   status_css(status):  # "Open" -> "Done" etc etc
     return "status-"    + status.lower().replace(" ", "-")
 
@@ -152,7 +144,6 @@ def   status_css(status):  # "Open" -> "Done" etc etc
 
 
 
-# so many choices. still no option to go home
 # make the dropdown choices
 def options(choices, chosen):
     options = []
@@ -218,7 +209,6 @@ def  all_rows():
 
 
 
-# same requests, no outfit
 # send the requests as json
 def json_list():
     body   = json.dumps([dict(row)    for row in all_rows()], ensure_ascii=False)
@@ -227,7 +217,6 @@ def json_list():
 
 
 
-# the group chat has become a website
 # make the cards on the server
 def board():
     rows =    all_rows()
@@ -255,7 +244,6 @@ def   new():
              "content_link": "",   "status": "Open"}
     return form_page(empty)
 #create request
-# another side quest has entered the chat
 # save a new request
 def   add(form):
     data, errors    = check(form)
@@ -301,7 +289,6 @@ def    edit(rid):
     return form_page(row, rid=rid)
 
 
-# we all deserve an edit button
 # save the edits
 def save(rid, form):
     if find(rid) is None:
@@ -318,7 +305,6 @@ def save(rid, form):
     return redirect(f"/requests/{rid}")
 
 
-# are you sure or just hungry
 # ask before deleting
 def    ask_delete(rid):# shows a question
     row =  find(rid)
@@ -350,8 +336,7 @@ def   file_data(filename):# send a file from static
 
 
 
-# you go here, you go there, everybody gets a route
-# pick the function for this url
+# pick the function for this
 def go(method, path, form):
     # rid is the request number in the url
     parts = path.split("/")
@@ -406,8 +391,7 @@ def go(method, path, form):
 
 
 # trying to hold this whole thing together
-# handle the request and catch database errors
-def  reply(method, path, form):
+    def  reply(method, path, form):
     try:
         return go(method,    path, form)
     except sqlite3.Error  as error:
@@ -416,7 +400,6 @@ def  reply(method, path, form):
                           "Something went wrong with the database. Please try again later.", 500)
 
 
-# the web server things here. yes this is the whole server
 # read the browser request and send back the result
 class Web(BaseHTTPRequestHandler):
     def    do_GET(self):
