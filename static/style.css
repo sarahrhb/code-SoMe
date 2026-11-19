@@ -3,28 +3,27 @@
 /* the colors have arrived and they are not being subtle */
 /* colors used below */
 :root {color-scheme: dark;
-      --night: #111215;
-  --panel: #191a20;
-  --panel-raised: #22232b;
-    --ink: #f2efe8;
-   --muted: #a7a49c;
+      --black: #111215;
+  --dark-gray: #191a20;
+  --gray: #22232b;
+    --white: #f2efe8;
+   --light-gray: #a7a49c;
 
 
-      --line: #34353c;
-  --lime: #C9FE6E;
-  --orchid: #8170EF;
-    --mint: #33DE7B;
-   --rose: #FD73C6;
-      --pumpkin: #ED6D2D;
-  --coral: var(--pumpkin);
-  --paper: #eee8d9;
-    --paper-ink: #2a170d;}
+      --border-gray: #34353c;
+  --light-green: #C9FE6E;
+  --purple: #8170EF;
+    --green: #33DE7B;
+   --pink: #FD73C6;
+      --orange: #ED6D2D;
+  --beige: #eee8d9;
+    --brown: #2a170d;}
 
 * {box-sizing: border-box;}
 
 body {margin: 0;
-    background: var(--night);
-   color: var(--ink);
+    background: var(--black);
+   color: var(--white);
       font-family: "DM Sans", Arial, Helvetica, sans-serif;
   line-height: 1.5;}
 
@@ -37,7 +36,7 @@ button:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-  outline: 3px solid var(--lime);
+  outline: 3px solid var(--light-green);
     outline-offset: 4px;
 }
 
@@ -53,7 +52,7 @@ select:focus-visible {
    align-items: center;
       justify-content: space-between;
   gap: 24px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--border-gray);
 }
 
 .logo {
@@ -73,31 +72,31 @@ nav {
 }
 
 nav a {
-      color: var(--muted);
+      color: var(--light-gray);
   text-decoration: none;
 }
 nav a:hover,
 nav a:focus-visible {
-  color: var(--ink);
+  color: var(--white);
 }
 
 
 
 nav span {
-      color: var(--lime);
+      color: var(--light-green);
 }
 
 nav button {
     padding: 0;
    border: 0;
       background: none;
-  color: var(--muted);
+  color: var(--light-gray);
   font: inherit;
     cursor: pointer;
 }
 
 nav button:hover {
-  color: var(--ink);
+  color: var(--white);
 }
 
 main {
@@ -117,8 +116,8 @@ main {
     justify-content: space-between;
    flex-wrap: wrap;
       gap: 8px 20px;
-  border-top: 1px solid var(--line);
-  color: var(--muted);
+  border-top: 1px solid var(--border-gray);
+  color: var(--light-gray);
     font-family: "DM Mono", monospace;
    font-size: 0.66rem;
       letter-spacing: 0.07em;
@@ -126,7 +125,7 @@ main {
 }
 
 .site-footer span:first-child {
-      color: var(--lime);
+      color: var(--light-green);
 }
 .detail h1,
 main > h1 {
@@ -145,9 +144,9 @@ main > h1 {
     align-items: center;
    justify-content: space-between;
       gap: 28px;
-  border: 1px solid var(--lime);
-  background: var(--lime);
-    color: var(--night);
+  border: 1px solid var(--light-green);
+  background: var(--light-green);
+    color: var(--black);
    font-size: 0.9rem;
       font-weight: 700;
   font-family: "DM Mono", monospace;
@@ -160,18 +159,18 @@ main > h1 {
 .button:hover {
    transform: translateY(-2px);
       background: transparent;
-  color: var(--lime);
+  color: var(--light-green);
 
 
 }
 
 .button-danger {
-      border-color: var(--coral);
-  background: var(--coral);
+      border-color: var(--orange);
+  background: var(--orange);
 }
 .button-danger:hover {
-      border-color: var(--coral);
-  color: var(--coral);
+      border-color: var(--orange);
+  color: var(--orange);
 }
 
 .filters {
@@ -193,7 +192,7 @@ main > h1 {
 .form label {
     display: block;
    margin-bottom: 7px;
-      color: var(--muted);
+      color: var(--light-gray);
   font-size: 0.74rem;
   font-weight: 700;
     font-family: "DM Mono", monospace;
@@ -208,10 +207,10 @@ main > h1 {
 .form select {
     width: 100%;
    padding: 12px 13px;
-      border: 1px solid var(--line);
+      border: 1px solid var(--border-gray);
   border-radius: 0;
-  background: var(--panel);
-    color: var(--ink);
+  background: var(--dark-gray);
+    color: var(--white);
 
 
    font: inherit;
@@ -225,13 +224,13 @@ main > h1 {
 #request-count,
 #request-feed-message {
   margin: 7px 0 0;
-  color: var(--muted);
+  color: var(--light-gray);
     font-size: 0.78rem;
 }
 #request-feed-message:not(:empty) {
   padding: 10px 12px;
-    border-left: 2px solid var(--coral);
-   background: var(--panel);
+    border-left: 2px solid var(--orange);
+   background: var(--dark-gray);
 }
 #request-feed-message[hidden] {
     display: none;
@@ -261,9 +260,9 @@ main > h1 {
   display: flex;
   flex-direction: column;
     align-items: flex-start;
-   border: 1px solid var(--line);
-      border-top: 3px solid var(--lime);
-  background: var(--panel-raised);
+   border: 1px solid var(--border-gray);
+      border-top: 3px solid var(--light-green);
+  background: var(--gray);
   transition: transform 180ms ease, border-color 180ms ease;
 }
 
@@ -279,21 +278,21 @@ main > h1 {
    transform: rotate(0.35deg) translateY(-5px);
 }
 
-.card:nth-child(5n + 2) { border-top-color: var(--orchid); }
+.card:nth-child(5n + 2) { border-top-color: var(--purple); }
 
 
-.card:nth-child(5n + 3) { border-top-color: var(--mint); }
-.card:nth-child(5n + 4) { border-top-color: var(--rose); }
-.card:nth-child(5n + 5) { border-top-color: var(--pumpkin); }
+.card:nth-child(5n + 3) { border-top-color: var(--green); }
+.card:nth-child(5n + 4) { border-top-color: var(--pink); }
+.card:nth-child(5n + 5) { border-top-color: var(--orange); }
 .card::after {
     width: 25px;
    height: 25px;
       position: absolute;
   top: -1px;
   right: -1px;
-    border-left: 1px solid var(--line);
-   border-bottom: 1px solid var(--line);
-      background: var(--night);
+    border-left: 1px solid var(--border-gray);
+   border-bottom: 1px solid var(--border-gray);
+      background: var(--black);
   clip-path: polygon(0 0, 100% 100%, 100% 0);
   content: "";
 }
@@ -303,7 +302,7 @@ main > h1 {
   border-color: #696a70;
 }
 .card:focus-within {
-  border-color: var(--lime);
+  border-color: var(--light-green);
   transform: translateY(-2px) rotate(0);
 }
 
@@ -321,8 +320,8 @@ main > h1 {
       align-items: center;
   min-height: 23px;
   padding: 3px 8px;
-    border: 1px solid var(--line);
-   color: var(--muted);
+    border: 1px solid var(--border-gray);
+   color: var(--light-gray);
       font-size: 0.65rem;
   font-family: "DM Mono", monospace;
   letter-spacing: 0.07em;
@@ -330,17 +329,17 @@ main > h1 {
 }
 
 .tag {
-  border-color: var(--orchid);
+  border-color: var(--purple);
     color: #d4ceff;
 }
 
 .status-open {
-  border-color: var(--lime);
-    color: var(--lime);
+  border-color: var(--light-green);
+    color: var(--light-green);
 }
 .status-done {
-  border-color: var(--mint);
-    color: var(--mint);
+  border-color: var(--green);
+    color: var(--green);
 }
 
 
@@ -360,15 +359,15 @@ main > h1 {
 }
 
 .card h2 a:hover {
-  color: var(--lime);
+  color: var(--light-green);
 }
 .by {
   margin: 0;
-  color: var(--muted);
+  color: var(--light-gray);
     font-size: 0.82rem;
 }
 .by strong {
-  color: var(--ink);
+  color: var(--white);
     font-weight: 500;
 }
 
@@ -379,7 +378,7 @@ main > h1 {
       align-items: center;
   gap: 8px;
   border: 1px solid currentColor;
-    color: var(--lime);
+    color: var(--light-green);
    font-size: 0.67rem;
       font-family: "DM Mono", monospace;
   font-weight: 700;
@@ -396,12 +395,12 @@ main > h1 {
 }
 
 .card-link:hover {
-      background: var(--lime);
-  color: var(--night);
+      background: var(--light-green);
+  color: var(--black);
 }
 .quote-mark {
       height: 65px;
-  color: var(--lime);
+  color: var(--light-green);
 
 
   font-family: "DM Sans", Arial, Helvetica, sans-serif;
@@ -409,10 +408,10 @@ main > h1 {
    line-height: 1;
 }
 
-.card:nth-child(5n + 2) .quote-mark { color: var(--orchid); }
-.card:nth-child(5n + 3) .quote-mark { color: var(--mint); }
-.card:nth-child(5n + 4) .quote-mark { color: var(--rose); }
-.card:nth-child(5n + 5) .quote-mark { color: var(--pumpkin); }
+.card:nth-child(5n + 2) .quote-mark { color: var(--purple); }
+.card:nth-child(5n + 3) .quote-mark { color: var(--green); }
+.card:nth-child(5n + 4) .quote-mark { color: var(--pink); }
+.card:nth-child(5n + 5) .quote-mark { color: var(--orange); }
 
 .card-text {
     max-width: 62ch;
@@ -430,7 +429,7 @@ main > h1 {
       display: flex;
   align-items: center;
   gap: 11px;
-    border-top: 1px solid var(--line);
+    border-top: 1px solid var(--border-gray);
 }
 
 .initial {
@@ -443,14 +442,14 @@ main > h1 {
   place-items: center;
   border: 1px solid #5b5d61;
     border-radius: 50%;
-   color: var(--lime);
+   color: var(--light-green);
       font-family: "DM Mono", monospace;
 }
 
 .card-bottom .by small {
    display: block;
       margin-top: 2px;
-  color: var(--muted);
+  color: var(--light-gray);
   font-size: 0.64rem;
     letter-spacing: 0.1em;
    text-transform: uppercase;
@@ -466,8 +465,8 @@ main > h1 {
     margin: 0;
    padding: 22px 24px 18px;
       border: 1px dashed #c8c0ae;
-  background: var(--paper);
-  color: var(--paper-ink);
+  background: var(--beige);
+  color: var(--brown);
     box-shadow: 5px 5px 0 rgb(238 232 217 / 12%);
 
 
@@ -475,7 +474,7 @@ main > h1 {
 
 .done-card::after {
   border-color: #c5bdac;
-    background: var(--paper);
+    background: var(--beige);
 }
 .done-card:hover {
   background: #f6f0e3;
@@ -485,7 +484,7 @@ main > h1 {
 .done-card .by strong,
 .done-card h2 a,
 .done-card .card-text {
-   color: var(--paper-ink);
+   color: var(--brown);
 }
 
 .done-card .status-done {
@@ -514,7 +513,7 @@ main > h1 {
 
 .empty {
   padding: 34px 0;
-  color: var(--muted);
+  color: var(--light-gray);
     font-family: "DM Sans", Arial, Helvetica, sans-serif;
    font-size: 1.3rem;
 }
@@ -523,8 +522,8 @@ main > h1 {
   position: relative;
     max-width: 900px;
    padding: clamp(24px, 5vw, 56px);
-      border: 1px solid var(--line);
-  background: var(--panel);
+      border: 1px solid var(--border-gray);
+  background: var(--dark-gray);
 }
 
 .detail h1,
@@ -561,8 +560,8 @@ main > h1 {
 .about section {
     max-width: 850px;
    padding: clamp(22px, 4vw, 42px);
-      border: 1px solid var(--line);
-  background: var(--panel);
+      border: 1px solid var(--border-gray);
+  background: var(--dark-gray);
 }
 
 .form label {
@@ -590,7 +589,7 @@ main > h1 {
 .about p,
 .about li,
 body > main > p {
-    color: var(--muted);
+    color: var(--light-gray);
 }
 
 
@@ -603,7 +602,7 @@ body > main > p {
   max-width: 850px;
   margin-bottom: 16px;
     padding: 12px 18px;
-   border-left: 3px solid var(--coral);
+   border-left: 3px solid var(--orange);
       background: #2a1d1b;
   color: #f1c6b6;
 }
@@ -703,7 +702,7 @@ body > main > p {
   gap: 16px 28px;
     padding-bottom: 28px;
    margin-bottom: 28px;
-      border-bottom: 1px solid var(--line);
+      border-bottom: 1px solid var(--border-gray);
 }
 .intro h1 {
     flex: 1 1 100%;
@@ -714,19 +713,19 @@ body > main > p {
     line-height: 1;
    letter-spacing: -0.06em;
 }
-.intro p { flex: 1 1 320px; color: var(--muted); }
+.intro p { flex: 1 1 320px; color: var(--light-gray); }
 #request-filters { margin-bottom: 28px; }
 #clear-request-filters {
    margin-top: 10px;
       border: 0;
   padding: 6px 0;
   background: transparent;
-    color: var(--lime);
+    color: var(--light-green);
    font: inherit;
       text-decoration: underline;
   cursor: pointer;
 }
-.status-in-progress { border-color: var(--pumpkin); color: var(--pumpkin); }
+.status-in-progress { border-color: var(--orange); color: var(--orange); }
 .card-bottom .by { min-width: 0; overflow-wrap: anywhere; }
 .site-footer p { margin: 0; }
 
@@ -766,8 +765,8 @@ body > main > p {
     background: transparent; border: 0;
   border-bottom: 1px solid #66666b;
 }
-#request-filters input { border-bottom-color: var(--lime); }
-#request-filters select option { background: var(--night); color: var(--ink); }
+#request-filters input { border-bottom-color: var(--light-green); }
+#request-filters select option { background: var(--black); color: var(--white); }
 #request-count { display: inline-block; margin: 23px 17px 0 5px; }
 #clear-request-filters { margin-top: 13px; font-size: .8rem; }
 
